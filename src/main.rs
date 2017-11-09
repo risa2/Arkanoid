@@ -1,120 +1,91 @@
-extern crate piston;
-extern crate graphics;
-extern crate glutin_window;
-extern crate opengl_graphics;
+extern crate sdl2;
 
-use std::vec::Vec;
-use piston::window::WindowSettings;
-use piston::event_loop::*;
-use piston::input::*;
-use glutin_window::GlutinWindow as Window;
-use opengl_graphics::{ GlGraphics, OpenGL };
+use sdl2::pixels::Color;
+use sdl2::rect::Rect;
 
 struct Block {
-    color: [f32; 4],
-    x: f64,
-    y: f64
+    color: Color,
+    x: i32,
+    y: i32
 }
 
 struct Ball {
-    x: f64,
-    y: f64,
-    x_move: f64,
-    y_move: f64
+    x: i32,
+    y: i32,
+    x_move: i32,
+    y_move: i32
 }
 
 type Blocks=Vec<Block>;
 
-trait BlocksTrait{
-    fn make(left: f64, top: f64, width: f64, height: f64, x_count: u32, y_count: u32)->Blocks;
-}
 
-impl BlocksTrait for Blocks {
-    fn make(left: f64, top: f64, width: f64, height: f64, x_count: u32, y_count: u32)->Blocks {
-        let mut blocks: Blocks=vec![];
+fn make_blocks(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_count: u32)->Blocks {
+    let mut blocks: Blocks=vec![];
+    for y in 0..y_count {
         for x in 0..x_count {
-            for y in 0..y_count {
-                let (dst_x, dst_y)=(left+(x as f64)*width/(x_count as f64), top+(y as f64)*width/(y_count as f64));
-                blocks.push(Block{color: [(x%2) as f32, ((x+1)%2) as f32, 0.0, 1.0], x: dst_x, y: dst_y});
-            }
+            let (dst_x, dst_y)=(left+x*width/x_count, top+y*height/y_count);
+            blocks.push(Block{color: Color::RGB((x%2*255) as u8, ((x+1)%2*255) as u8, 0), x: dst_x as i32, y: dst_y as i32});
         }
-        blocks
     }
+    blocks
 }
 
 struct Palka {
-    x: f64
+    x: i32
 }
 
 impl Block {
-    fn render(&self, c: graphics::Context, gl: &mut GlGraphics) {
-        use graphics::*;
-        rectangle(self.color, [self.x, self.y, 25.0, 10.0], c.transform, gl);
+    fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
+        renderer.set_draw_color(self.color);
+        renderer.fill_rect(Rect::new(self.x, self.y, 20, 10));
     }
 }
 
 impl Ball {
-    fn render(&self, c: graphics::Context, gl: &mut GlGraphics) {
-        use graphics::*;
+    fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 
 
     }
 }
 
 struct App {
-    gl: GlGraphics,
     blocks: Blocks,
     ball: Ball,
     palka: Palka
 }
 
 impl App {
-    fn render(&mut self, args: &RenderArgs) {
-        use graphics::*;
+    fn render(&mut self, renderer: &mut sdl2::render::WindowCanvas) {
 
         let blocks=&self.blocks;
-        self.gl.draw(args.viewport(), |c, glg| {
-            clear([0.0, 1.0, 0.0, 1.0], glg);
-
-            for block in blocks {
-                block.render(c, glg);
-            }
-
-        });
+        for block in blocks {
+            block.render(renderer);
+        }
     }
 
-    fn update(&mut self, args: &UpdateArgs) {
+    fn update(&mut self) {
 
     }
 }
 
 fn main() {
-    let opengl = OpenGL::V3_0;
-
-    let mut window: Window = WindowSettings::new(
-        "Arkanoid",
-        [1000, 600]
-    )
-        .opengl(opengl)
-        .exit_on_esc(true)
-        .build()
-        .unwrap();
+    let sdl=sdl2::init().unwrap();
+    let video=sdl.video().unwrap();
+    let window=video.window("Arkanoid", 1000, 600).build().unwrap();
+    let mut renderer=window.into_canvas().build().unwrap();
 
     let mut app = App {
-        gl: GlGraphics::new(opengl),
-        blocks: Blocks::make(0.0, 0.0, 150.0, 600.0, 16, 10),
-        ball: Ball{x: 300.0, y: 800.0, x_move: 0.0, y_move: 0.0},
-        palka: Palka{x: 300.0}
+        blocks: make_blocks(0, 0, 600, 600, 10, 10),
+        ball: Ball{x: 300, y: 800, x_move: 0, y_move: 0},
+        palka: Palka{x: 300}
     };
 
-    let mut events = Events::new(EventSettings::new());
-    while let Some(e) = events.next(&mut window) {
-        if let Some(r) = e.render_args() {
-            app.render(&r);
-        }
+    let mut events = sdl.event_pump().unwrap();
+    loop {
+        for event in events.poll_iter() {
 
-        if let Some(u) = e.update_args() {
-            app.update(&u);
         }
+        app.render(&mut renderer);
+        app.update();
     }
 }
