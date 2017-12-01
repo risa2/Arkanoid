@@ -1,6 +1,6 @@
 use std::f32;
 
-const PI:f32=3.14159265358;
+pub const PI:f32=3.14159265358;
 pub fn split(lenght: u32, width: u32, index: u32)->u32 {
     index*lenght/width
 }

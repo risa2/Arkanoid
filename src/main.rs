@@ -46,8 +46,8 @@ fn make_blocks(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_cou
 }
 
 impl Block {
-    const WIDTH:u32=20;
-    const HEIGHT:u32=10;
+    const WIDTH:u32=100;
+    const HEIGHT:u32=40;
     fn to_rect(&self)->Rect {
         Rect::new(self.x, self.y, Block::WIDTH, Block::HEIGHT)
     }
@@ -71,6 +71,8 @@ impl Scene {
 
 impl<'a> Ball<'a> {
     const SIZE: f32=20.0;
+    const SIDE: (f32, f32)=(-1.0/0.0, -1.0/0.0);
+    const NOT_TOUCH: (f32, f32)=(1.0/0.0, 1.0/0.0);
     fn to_rect(&self)->Rect {
         Rect::new(self.x as i32, self.y as i32, Ball::SIZE as u32, Ball::SIZE as u32)
     }
@@ -78,6 +80,43 @@ impl<'a> Ball<'a> {
         renderer.set_draw_color(Color::RGB(0,0,255));
         renderer.fill_rect(self.to_rect());
 
+    }
+
+    fn colision(&self, block: &Block)->(f32, f32) {
+        if self.to_rect().has_intersection(block.to_rect()) {
+
+            let left_up_corner=(block.x as f32, block.y as f32);
+            let right_up_corner=(block.x as f32+Block::WIDTH as f32, block.y as f32);
+            let left_down_corner=(block.x as f32, block.y as f32+Block::HEIGHT as f32);
+            let right_down_corner=(block.x as f32+Block::WIDTH as f32, block.y as f32+Block::HEIGHT as f32);
+
+            let left_up=Rect::new(left_up_corner.0 as i32, left_up_corner.1 as i32, Ball::SIZE as u32, Ball::SIZE as u32);
+            let right_up=Rect::new(right_up_corner.0 as i32, right_up_corner.1 as i32, Ball::SIZE as u32, Ball::SIZE as u32);
+            let left_down=Rect::new(left_down_corner.0 as i32, left_down_corner.1 as i32, Ball::SIZE as u32, Ball::SIZE as u32);
+            let right_down=Rect::new(right_down_corner.0 as i32, right_down_corner.1 as i32, Ball::SIZE as u32, Ball::SIZE as u32);
+
+            let center=(self.x + Ball::SIZE / 2.0, self.y + Ball::SIZE / 2.0);
+            let this=Point::new(self.x as i32, self.y as i32);
+
+            if left_up.contains_point(this) {
+                if geometry::distance(center, left_up_corner)<=Ball::SIZE {left_down_corner}
+                    else {Ball::NOT_TOUCH}
+            }
+            else if right_up.contains_point(this) {
+                if geometry::distance(center, right_up_corner)<=Ball::SIZE {right_up_corner}
+                    else {Ball::NOT_TOUCH}
+            }
+            else if left_down.contains_point(this) {
+                if geometry::distance(center, left_down_corner)<=Ball::SIZE {left_down_corner}
+                    else {Ball::NOT_TOUCH}
+            }
+            else if right_down.contains_point(this) {
+                if geometry::distance(center, right_down_corner)<=Ball::SIZE {right_down_corner}
+                    else {Ball::NOT_TOUCH}
+            }
+            else {Ball::SIDE}
+        }
+        else {Ball::NOT_TOUCH}
     }
 
     fn update(&mut self) {
@@ -95,48 +134,18 @@ impl<'a> Ball<'a> {
 
 		let blocks=&self.scene.blocks;
         for block in blocks {
-                if self.to_rect().has_intersection(block.to_rect()) {
-                    let left_up=Rect::new(block.x - Ball::SIZE, block.y - Ball::SIZE, Ball::SIZE, Ball::SIZE);
-                    let right_up=Rect::new(block.x, block.y - Ball::SIZE, Ball::SIZE, Ball::SIZE);
-                    let left_down=Rect::new(block.x - Ball::SIZE, block.y, Ball::SIZE, Ball::SIZE);
-                    let right_down=Rect::new(block.x, block.y, Ball::SIZE, Ball::SIZE);
+            let touch_point=self.colision(block);
 
-                    let left_up_corner=(block.x-Ball::SIZE, block.y - Ball::SIZE);
-                    let right_up_corner=(block.x, block.y - Ball::SIZE);
-                    let left_down_corner=(block.x - Ball::SIZE, block.y);
-                    let right_down=(block.x, block.y);
-
-                    let center=(self.x + Ball::SIZE / 2, self.y + Ball::SIZE / 2);
-                    let this=Point::new(self.x, self.y);
-
-                    let not_touch=(1.0/0.0, 1.0/0.0);
-                    let wall=(-1.0/0.0, -1.0/0.0);
-
-                    let touch_point=
-                    if left_up.contains_point(this) {
-                        if geometry::distance(center, left_up_corner)<=Ball::SIZE {left_down_corner}
-                        else {not_touch}
-                    }
-                    else if right_up.contains_point(this) {
-                        if geometry::distance(center, right_up_corner)<=Ball::SIZE {right_up_corner}
-                        else {not_touch}
-                    }
-                    else if left_down.contains_point(this) {
-                        if geometry::distance(center, left_down_corner)<=Ball::SIZE {left_down_corner}
-                        else {not_touch}
-                    }
-                    else if right_down.contains_point(this) {
-                        if geometry::distance(center, right_down_corner)<=Ball::SIZE {right_down_corner}
-                        else {not_touch}
-                    }
-                    else {wall};
-                    if touch_point==not_touch {
-                        continue;
-                    }
-                    if touch_point!=wall {
-                        self.direction=geometry::bounce(self.direction, (self.y+Ball::SIZE/2-touch_point.1).atan2(self.x+Ball::SIZE/2-touch_point.0));
-                    }
+            if touch_point==Ball::SIDE {
+                if (block.x as f32-self.x).abs()<=Ball::SIZE {
+                    self.direction=geometry::horizontal_bounce(self.direction);
                 }
+                else {
+                    self.direction=geometry::vertical_bounce(self.direction);
+                }
+            }
+            else if touch_point!=Ball::NOT_TOUCH{
+                self.direction=geometry::bounce(self.direction, (touch_point.1-(self.y+Ball::SIZE/2.0)).atan2(touch_point.0-(self.x+Ball::SIZE/2.0)));
             }
         }
     }
@@ -167,7 +176,7 @@ fn main() {
     let window=video.window("Arkanoid", 1000, 600).build().unwrap();
     let mut renderer=window.into_canvas().build().unwrap();
 
-    let scene=Scene{blocks: make_blocks(10, 0, 980, 600, 10, 10), width: 1000, height: 600};
+    let scene=Scene{blocks: make_blocks(10, 0, 980, 600, 5, 6), width: 1000, height: 600};
     let mut app=App {
         ball: Ball{x: 300.0, y: 400.0, direction: 3.0, speed: 2.0, scene: &scene},
         palka: Palka{x: 300},
@@ -187,4 +196,21 @@ fn main() {
         app.update();
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
+}
+
+#[test]
+fn test_bounce() {
+    assert!(geometry::bounce(geometry::PI, 0.0).abs()<0.001);
+}
+
+#[test]
+fn test_collision() {
+    let blocks=vec![];
+    let scene=Scene{width: 800, height:600, blocks: blocks};
+
+    let ball=Ball{x: 400.0, y: 400.0, direction: 0.0, speed: 1.0, scene: &scene};
+    let block1=Block{x: 419, y: 399, color: Color::RGB(0,0,0)};
+    let block2=Block{x: 400, y: 419, color: Color::RGB(0,0,0)};
+    assert_eq!(ball.colision(&block1), Ball::SIDE);
+    assert_eq!(ball.colision(&block2), Ball::SIDE);
 }
