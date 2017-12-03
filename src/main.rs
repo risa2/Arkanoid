@@ -73,49 +73,48 @@ impl Scene {
 
 impl<'a> Ball<'a> {
 	fn to_rect(&self)->Rect {
-		Rect::new(self.circle.corner().0, self.circle.corner().1, self.circle.radius as u32, self.circle.radius as u32)
+		Rect::new(self.circle.corner().0, self.circle.corner().1, self.circle.radius as u32*2, self.circle.radius as u32*2)
 	}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(Color::RGB(0,0,255));
-		draw::circle(renderer, self.circle, 0.1);
+		draw::circle(renderer, self.circle, 0.1).unwrap();
 
 	}
 
 	fn collision(&self, block: &Block)->option::Option<option::Option<(i32, i32)>> {
 		if self.to_rect().has_intersection(block.to_rect()) {
-
 			let left_up_corner=(block.x, block.y);
 			let right_up_corner=(block.x+Block::WIDTH as i32, block.y);
 			let left_down_corner=(block.x, block.y+Block::HEIGHT as i32);
 			let right_down_corner=(block.x+Block::WIDTH as i32, block.y+Block::HEIGHT as i32);
 
-			let left_up=Rect::new(left_up_corner.0, left_up_corner.1, self.circle.radius as u32, self.circle.radius as u32);
-			let right_up=Rect::new(right_up_corner.0, right_up_corner.1, self.circle.radius as u32, self.circle.radius as u32);
-			let left_down=Rect::new(left_down_corner.0, left_down_corner.1, self.circle.radius as u32, self.circle.radius as u32);
-			let right_down=Rect::new(right_down_corner.0, right_down_corner.1, self.circle.radius as u32, self.circle.radius as u32);
+			let left_up=Rect::new(left_up_corner.0, left_up_corner.1, self.circle.radius as u32*2, self.circle.radius as u32*2);
+			let right_up=Rect::new(right_up_corner.0, right_up_corner.1, self.circle.radius as u32*2, self.circle.radius as u32*2);
+			let left_down=Rect::new(left_down_corner.0, left_down_corner.1, self.circle.radius as u32*2, self.circle.radius as u32*2);
+			let right_down=Rect::new(right_down_corner.0, right_down_corner.1, self.circle.radius as u32*2, self.circle.radius as u32*2);
 
 			let center=(self.circle.x, self.circle.y);
 			let this=Point::new(self.circle.corner().0, self.circle.corner().1);
 
 			if left_up.contains_point(this) {
 				if geometry::distance(center, left_up_corner)<=self.circle.radius {Some(Some(left_down_corner))}
-				else {option::Option::None}
+				else {println!("LU");option::Option::None}
 			}
 			else if right_up.contains_point(this) {
 				if geometry::distance(center, right_up_corner)<=self.circle.radius {Some(Some(right_up_corner))}
-				else {option::Option::None}
+				else {println!("RU");option::Option::None}
 			}
 			else if left_down.contains_point(this) {
 				if geometry::distance(center, left_down_corner)<=self.circle.radius {Some(Some(left_down_corner))}
-				else {option::Option::None}
+				else {println!("LD");option::Option::None}
 			}
 			else if right_down.contains_point(this) {
 				if geometry::distance(center, right_down_corner)<=self.circle.radius {Some(Some(right_down_corner))}
-				else {option::Option::None}
+				else {println!("RD");option::Option::None}
 			}
 			else {option::Option::Some(option::Option::None)}
 		}
-		else {option::Option::None}
+		else {println!("88");option::Option::None}
 	}
 		
 	fn go(&mut self) {

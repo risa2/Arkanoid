@@ -9,7 +9,7 @@ pub struct Circle {
 
 impl Circle {
 	pub fn corner(&self)->(i32, i32) {
-		(self.x-self.radius as i32/2, self.y-self.radius as i32/2)
+		(self.x-self.radius as i32, self.y-self.radius as i32)
 	}
 	pub fn center(&self)->(i32, i32) {
 		(self.x, self.y)

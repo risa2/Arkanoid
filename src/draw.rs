@@ -6,7 +6,7 @@ use sdl2::rect::Point;
 use std::f32;
 use std::result::Result;
 
-pub fn circle<T: sdl2::render::RenderTarget>(out: &mut sdl2::render::Canvas<T>, circle: geometry::Circle, detail: f32){
+pub fn circle<T: sdl2::render::RenderTarget>(out: &mut sdl2::render::Canvas<T>, circle: geometry::Circle, detail: f32)->Result<(), String>{
 	let mut angle: f32=0.0;
 	let mut res: Result<(), String> =Result::Ok(());
 	while angle<2.0*geometry::PI {
@@ -15,4 +15,5 @@ pub fn circle<T: sdl2::render::RenderTarget>(out: &mut sdl2::render::Canvas<T>, 
 		res=res.and(err);
 		angle+=detail;
 	}
+	res
 }
