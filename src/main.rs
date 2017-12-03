@@ -98,23 +98,23 @@ impl<'a> Ball<'a> {
 
 			if left_up.contains_point(this) {
 				if geometry::distance(center, left_up_corner)<=self.circle.radius {Some(Some(left_down_corner))}
-				else {println!("LU");option::Option::None}
+				else {option::Option::None}
 			}
 			else if right_up.contains_point(this) {
 				if geometry::distance(center, right_up_corner)<=self.circle.radius {Some(Some(right_up_corner))}
-				else {println!("RU");option::Option::None}
+				else {option::Option::None}
 			}
 			else if left_down.contains_point(this) {
 				if geometry::distance(center, left_down_corner)<=self.circle.radius {Some(Some(left_down_corner))}
-				else {println!("LD");option::Option::None}
+				else {option::Option::None}
 			}
 			else if right_down.contains_point(this) {
 				if geometry::distance(center, right_down_corner)<=self.circle.radius {Some(Some(right_down_corner))}
-				else {println!("RD");option::Option::None}
+				else {option::Option::None}
 			}
 			else {option::Option::Some(option::Option::None)}
 		}
-		else {println!("88");option::Option::None}
+		else {option::Option::None}
 	}
 		
 	fn go(&mut self) {
@@ -206,12 +206,12 @@ fn test_collision() {
 	let scene=Scene{width: 800, height:600, blocks: blocks};
 
 	let block=Block{x: 400, y: 400, color: Color::RGB(0,0,0)};
-	let ball_1=Ball{circle: geometry::Circle{x: 405, y: 400-20+1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
+	let ball_1=Ball{circle: geometry::Circle{x: 405, y: 400-10+1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
 	let ball_2=Ball{circle: geometry::Circle{x: 405, y: 400+Block::HEIGHT-1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
-	let ball_3=Ball{circle: geometry::Circle{x: 400-20, y: 405, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
+	let ball_3=Ball{circle: geometry::Circle{x: 400-10+1, y: 405, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
 	let ball_4=Ball{circle: geometry::Circle{x: 400+Block::WIDTH-1, y: 405, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
 	let ball_5=Ball{circle: geometry::Circle{x: 400+Block::WIDTH/2, y: 400+Block::HEIGHT-1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
-	let ball_6=Ball{circle: geometry::Circle{x: 400-20, y: 400-20, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
+	let ball_6=Ball{circle: geometry::Circle{x: 400-10, y: 400-10, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
 	assert!(!ball_1.collision(&block).unwrap().is_some());
 	assert!(!ball_2.collision(&block).unwrap().is_some());
 	assert!(!ball_3.collision(&block).unwrap().is_some());
