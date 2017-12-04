@@ -4,7 +4,6 @@ mod geometry;
 mod draw;
 
 use std::f32;
-use std::option;
 
 use sdl2::pixels::Color;
 use sdl2::rect::{Rect, Point};
@@ -71,6 +70,12 @@ impl Scene {
 	}
 }
 
+enum Collision {
+	None,
+	Side,
+	Corner((i32, i32))
+}
+
 impl<'a> Ball<'a> {
 	fn to_rect(&self)->Rect {
 		Rect::new(self.circle.corner().0, self.circle.corner().1, self.circle.radius as u32*2, self.circle.radius as u32*2)
@@ -78,10 +83,9 @@ impl<'a> Ball<'a> {
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(Color::RGB(0,0,255));
 		draw::circle(renderer, self.circle, 0.1).unwrap();
-
 	}
-
-	fn collision(&self, block: &Block)->option::Option<option::Option<(i32, i32)>> {
+	
+	fn collision(&self, block: &Block)->Collision {
 		if self.to_rect().has_intersection(block.to_rect()) {
 			let left_up_corner=(block.x, block.y);
 			let right_up_corner=(block.x+Block::WIDTH as i32, block.y);
@@ -97,24 +101,24 @@ impl<'a> Ball<'a> {
 			let this=Point::new(self.circle.corner().0, self.circle.corner().1);
 
 			if left_up.contains_point(this) {
-				if geometry::distance(center, left_up_corner)<=self.circle.radius {Some(Some(left_down_corner))}
-				else {option::Option::None}
+				if geometry::distance(center, left_up_corner)<=self.circle.radius {Collision::Corner(left_down_corner)}
+				else {Collision::None}
 			}
 			else if right_up.contains_point(this) {
-				if geometry::distance(center, right_up_corner)<=self.circle.radius {Some(Some(right_up_corner))}
-				else {option::Option::None}
+				if geometry::distance(center, right_up_corner)<=self.circle.radius {Collision::Corner(right_up_corner)}
+				else {Collision::None}
 			}
 			else if left_down.contains_point(this) {
-				if geometry::distance(center, left_down_corner)<=self.circle.radius {Some(Some(left_down_corner))}
-				else {option::Option::None}
+				if geometry::distance(center, left_down_corner)<=self.circle.radius {Collision::Corner(left_down_corner)}
+				else {Collision::None}
 			}
 			else if right_down.contains_point(this) {
-				if geometry::distance(center, right_down_corner)<=self.circle.radius {Some(Some(right_down_corner))}
-				else {option::Option::None}
+				if geometry::distance(center, right_down_corner)<=self.circle.radius {Collision::Corner(right_down_corner)}
+				else {Collision::None}
 			}
-			else {option::Option::Some(option::Option::None)}
+			else {Collision::Side}
 		}
-		else {option::Option::None}
+		else {Collision::None}
 	}
 		
 	fn go(&mut self) {
@@ -136,19 +140,20 @@ impl<'a> Ball<'a> {
 
 		let blocks=&self.scene.blocks;
 		for block in blocks {
-			if let Some(result)=self.collision(block) {
-				if let Some(touch_point)=result {
+			match self.collision(block) {
+				Collision::Corner(touch_point) => {
 					self.direction=geometry::bounce(self.direction, geometry::line_angle(touch_point, self.circle.center()));
-				}
-				else {
-					if (block.x-self.circle.x).abs()<=self.circle.radius as i32 {
+				},
+				Collision::Side => {
+					if block.x-self.circle.x<=self.circle.radius as i32 || self.circle.x-block.x-Block::WIDTH<=self.circle.radius as i32 {
 						self.direction=geometry::horizontal_bounce(self.direction);
 					}
-					if (block.y-self.circle.y).abs()<=self.circle.radius as i32 {
+					if block.y-self.circle.y<=self.circle.radius as i32 || self.circle.y-block.y-Block::HEIGHT<=self.circle.radius as i32 {
 						self.direction=geometry::vertical_bounce(self.direction);
 					}
-				}
-			}
+				},
+				Collision::None => ()
+			};
 		}
 	}
 }
@@ -206,11 +211,11 @@ fn test_collision() {
 	let scene=Scene{width: 800, height:600, blocks: blocks};
 
 	let block=Block{x: 400, y: 400, color: Color::RGB(0,0,0)};
-	let ball_1=Ball{circle: geometry::Circle{x: 405, y: 400-10+1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
-	let ball_2=Ball{circle: geometry::Circle{x: 405, y: 400+Block::HEIGHT-1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
-	let ball_3=Ball{circle: geometry::Circle{x: 400-10+1, y: 405, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
-	let ball_4=Ball{circle: geometry::Circle{x: 400+Block::WIDTH-1, y: 405, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
-	let ball_5=Ball{circle: geometry::Circle{x: 400+Block::WIDTH/2, y: 400+Block::HEIGHT-1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
+	let ball_1=Ball{circle: geometry::Circle{x: 410, y: 400-10+1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
+	let ball_2=Ball{circle: geometry::Circle{x: 410, y: 400+Block::HEIGHT+10-1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
+	let ball_3=Ball{circle: geometry::Circle{x: 400-10+1, y: 410, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
+	let ball_4=Ball{circle: geometry::Circle{x: 400+Block::WIDTH+10-1, y: 410, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
+	let ball_5=Ball{circle: geometry::Circle{x: 400+Block::WIDTH/2, y: 400+Block::HEIGHT+10-1, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
 	let ball_6=Ball{circle: geometry::Circle{x: 400-10, y: 400-10, radius: 10.0}, direction: 0.0, speed: 1.0, scene: &scene};
 	assert!(!ball_1.collision(&block).unwrap().is_some());
 	assert!(!ball_2.collision(&block).unwrap().is_some());

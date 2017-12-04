@@ -24,8 +24,12 @@ pub fn to_cartesian(lenght: f32, angle: f32)->(i32, i32) {
     ((lenght*angle.cos()) as i32, (lenght*angle.sin()) as i32)
 }
 
+fn relative_distance(dist: (i32, i32))->f32 {
+    ((dist.0*dist.0+dist.1*dist.1) as f32).sqrt()
+}
+
 pub fn distance(a: (i32, i32), b:(i32, i32))->f32 {
-    (((a.0-b.0)*(a.0-b.0)+(a.1-b.1)*(a.1-b.1)) as f32).sqrt()
+	relative_distance((a.0-b.0, a.1-b.1))
 }
 
 pub fn horizontal_bounce(angle: f32)->f32 {
@@ -52,7 +56,7 @@ pub fn line_angle(begin: (i32, i32), end: (i32, i32))->f32 {
 
 
 fn eq_float(a: f32, b: f32)->bool {
-	(a-b).abs()<0.001
+	(a-b).abs()<0.0001
 }
 
 #[test]
@@ -84,6 +88,7 @@ fn test_line_angle() {
 #[test]
 fn test_bounce() {
 	assert!(eq_float(bounce(PI, 0.0), 0.0));
+	assert!(eq_float(bounce(PI/4.0, PI), PI*3.0/4.0));
 	assert!(eq_float(bounce(0.0, PI*3.0/4.0), PI/2.0));
 	assert!(eq_float(bounce(PI*3.0/2.0, PI/4.0), 0.0));
 	assert!(eq_float(bounce(PI*3.0/4.0, 0.0), PI/4.0));
