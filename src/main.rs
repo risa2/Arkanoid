@@ -73,7 +73,7 @@ impl Scene {
 enum Collision {
 	None,
 	Side,
-	Corner((i32, i32))
+	Corner(i32, i32)
 }
 
 impl<'a> Ball<'a> {
@@ -87,33 +87,32 @@ impl<'a> Ball<'a> {
 	
 	fn collision(&self, block: &Block)->Collision {
 		if self.to_rect().has_intersection(block.to_rect()) {
-			let left_up_corner=(block.x, block.y);
-			let right_up_corner=(block.x+Block::WIDTH as i32, block.y);
-			let left_down_corner=(block.x, block.y+Block::HEIGHT as i32);
-			let right_down_corner=(block.x+Block::WIDTH as i32, block.y+Block::HEIGHT as i32);
-
-			let left_up=Rect::new(left_up_corner.0, left_up_corner.1, self.circle.radius as u32*2, self.circle.radius as u32*2);
-			let right_up=Rect::new(right_up_corner.0, right_up_corner.1, self.circle.radius as u32*2, self.circle.radius as u32*2);
-			let left_down=Rect::new(left_down_corner.0, left_down_corner.1, self.circle.radius as u32*2, self.circle.radius as u32*2);
-			let right_down=Rect::new(right_down_corner.0, right_down_corner.1, self.circle.radius as u32*2, self.circle.radius as u32*2);
+			let (left, up)=(block.x, block.y);
+			let (right, down)=(block.x+Block::WIDTH as i32, block.y+Block::HEIGHT as i32);
+			let size=self.circle.radius as i32*2;
+			
+			let left_up=Rect::new(left-size, up-size, size as u32, size as u32);
+			let right_up=Rect::new(right, up-size, size as u32, size as u32);
+			let left_down=Rect::new(left-size, down, size as u32, size as u32);
+			let right_down=Rect::new(right, down, size as u32, size as u32);
 
 			let center=(self.circle.x, self.circle.y);
 			let this=Point::new(self.circle.corner().0, self.circle.corner().1);
 
 			if left_up.contains_point(this) {
-				if geometry::distance(center, left_up_corner)<=self.circle.radius {Collision::Corner(left_down_corner)}
+				if geometry::distance(center, (left, up))<=self.circle.radius {Collision::Corner(left, up)}
 				else {Collision::None}
 			}
 			else if right_up.contains_point(this) {
-				if geometry::distance(center, right_up_corner)<=self.circle.radius {Collision::Corner(right_up_corner)}
+				if geometry::distance(center, (right, up))<=self.circle.radius {Collision::Corner(right, up)}
 				else {Collision::None}
 			}
 			else if left_down.contains_point(this) {
-				if geometry::distance(center, left_down_corner)<=self.circle.radius {Collision::Corner(left_down_corner)}
+				if geometry::distance(center, (left, down))<=self.circle.radius {Collision::Corner(left, down)}
 				else {Collision::None}
 			}
 			else if right_down.contains_point(this) {
-				if geometry::distance(center, right_down_corner)<=self.circle.radius {Collision::Corner(right_down_corner)}
+				if geometry::distance(center, (right, down))<=self.circle.radius {Collision::Corner(right, down)}
 				else {Collision::None}
 			}
 			else {Collision::Side}
@@ -141,8 +140,8 @@ impl<'a> Ball<'a> {
 		let blocks=&self.scene.blocks;
 		for block in blocks {
 			match self.collision(block) {
-				Collision::Corner(touch_point) => {
-					self.direction=geometry::bounce(self.direction, geometry::line_angle(touch_point, self.circle.center()));
+				Collision::Corner(x, y) => {
+					self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 				},
 				Collision::Side => {
 					if block.x-self.circle.x<=self.circle.radius as i32 || self.circle.x-block.x-Block::WIDTH<=self.circle.radius as i32 {
