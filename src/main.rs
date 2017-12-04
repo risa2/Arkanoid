@@ -96,7 +96,7 @@ impl<'a> Ball<'a> {
 			let left_down=Rect::new(left-size, down, size as u32, size as u32);
 			let right_down=Rect::new(right, down, size as u32, size as u32);
 
-			let center=(self.circle.x, self.circle.y);
+			let center=self.circle.center();
 			let this=Point::new(self.circle.corner().0, self.circle.corner().1);
 
 			if left_up.contains_point(this) {
