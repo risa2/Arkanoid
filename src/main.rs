@@ -72,8 +72,7 @@ impl Scene {
 
 enum Collision {
 	None,
-	Side,
-	Corner(i32, i32)
+	At(i32, i32)
 }
 
 impl<'a> Ball<'a> {
@@ -96,26 +95,34 @@ impl<'a> Ball<'a> {
 			let left_down=Rect::new(left-size, down, size as u32, size as u32);
 			let right_down=Rect::new(right, down, size as u32, size as u32);
 
-			let center=self.circle.center();
-			let this=Point::new(self.circle.corner().0, self.circle.corner().1);
+			let left_r=Rect::new(left-size, up, size as u32, Block::HEIGHT as u32);
+			let up_r=Rect::new(left, up-size, Block::WIDTH as u32, size as u32);
+			let right_r=Rect::new(right, up, size as u32, Block::HEIGHT as u32);
+			let down_r=Rect::new(left, down, Block::WIDTH as u32, size as u32);
+
+			let this=Point::new(self.circle.x, self.circle.y);
 
 			if left_up.contains_point(this) {
-				if geometry::distance(center, (left, up))<=self.circle.radius {Collision::Corner(left, up)}
+				if geometry::distance(self.circle.center(), (left, up))<=self.circle.radius {Collision::At(left, up)}
 				else {Collision::None}
 			}
 			else if right_up.contains_point(this) {
-				if geometry::distance(center, (right, up))<=self.circle.radius {Collision::Corner(right, up)}
+				if geometry::distance(self.circle.center(), (right, up))<=self.circle.radius {Collision::At(right, up)}
 				else {Collision::None}
 			}
 			else if left_down.contains_point(this) {
-				if geometry::distance(center, (left, down))<=self.circle.radius {Collision::Corner(left, down)}
+				if geometry::distance(self.circle.center(), (left, down))<=self.circle.radius {Collision::At(left, down)}
 				else {Collision::None}
 			}
 			else if right_down.contains_point(this) {
-				if geometry::distance(center, (right, down))<=self.circle.radius {Collision::Corner(right, down)}
+				if geometry::distance(self.circle.center(), (right, down))<=self.circle.radius {Collision::At(right, down)}
 				else {Collision::None}
 			}
-			else {Collision::Side}
+			else if left_r.contains_point(this) {Collision::At(left, self.circle.y)}
+			else if right_r.contains_point(this) {Collision::At(right, self.circle.y)}
+			else if up_r.contains_point(this) {Collision::At(self.circle.x, up)}
+			else if down_r.contains_point(this) {Collision::At(self.circle.x, down)}
+			else {Collision::None}
 		}
 		else {Collision::None}
 	}
@@ -140,16 +147,8 @@ impl<'a> Ball<'a> {
 		let blocks=&self.scene.blocks;
 		for block in blocks {
 			match self.collision(block) {
-				Collision::Corner(x, y) => {
+				Collision::At(x, y) => {
 					self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-				},
-				Collision::Side => {
-					if block.x-self.circle.x<=self.circle.radius as i32 || self.circle.x-block.x-Block::WIDTH<=self.circle.radius as i32 {
-						self.direction=geometry::horizontal_bounce(self.direction);
-					}
-					if block.y-self.circle.y<=self.circle.radius as i32 || self.circle.y-block.y-Block::HEIGHT<=self.circle.radius as i32 {
-						self.direction=geometry::vertical_bounce(self.direction);
-					}
 				},
 				Collision::None => ()
 			};
