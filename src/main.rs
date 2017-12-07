@@ -9,6 +9,7 @@ use sdl2::pixels::Color;
 use sdl2::rect::{Rect, Point};
 use sdl2::event;
 
+#[derive(Copy, Clone)]
 struct Block {
 	color: Color,
 	x: i32,
@@ -23,11 +24,10 @@ struct Scene {
 	blocks: Blocks
 }
 
-struct Ball<'a> {
+struct Ball {
 	circle: geometry::Circle,
 	direction: f32,
-	speed: f32,
-	scene: &'a Scene
+	speed: f32
 }
 
 struct Palka {
@@ -75,7 +75,7 @@ enum Collision {
 	At(i32, i32)
 }
 
-impl<'a> Ball<'a> {
+impl Ball {
 	fn to_rect(&self)->Rect {
 		Rect::new(self.circle.corner().0, self.circle.corner().1, self.circle.radius as u32*2, self.circle.radius as u32*2)
 	}
@@ -84,7 +84,7 @@ impl<'a> Ball<'a> {
 		draw::circle(renderer, self.circle, 0.1).unwrap();
 	}
 	
-	fn collision(&self, block: &Block)->Collision {
+	fn collision(&self, block: Block)->Collision {
 		if self.to_rect().has_intersection(block.to_rect()) {
 			let (left, up)=(block.x, block.y);
 			let (right, down)=(block.x+Block::WIDTH as i32, block.y+Block::HEIGHT as i32);
@@ -133,22 +133,25 @@ impl<'a> Ball<'a> {
 		self.circle.y+=dy;
 	}
 
-	fn update(&mut self) {
+	fn update(&mut self, scene: &mut Scene) {
 		self.go();
 	
-		if self.circle.x>self.scene.width-self.circle.radius as i32 || self.circle.x<self.circle.radius as i32 {
+		if self.circle.x>scene.width-self.circle.radius as i32 || self.circle.x<self.circle.radius as i32 {
 			self.direction=geometry::horizontal_bounce(self.direction);
 		}
 
-		if self.circle.y>self.scene.height-self.circle.radius as i32 || self.circle.y<self.circle.radius as i32 {
+		if self.circle.y>scene.height-self.circle.radius as i32 || self.circle.y<self.circle.radius as i32 {
 			self.direction=geometry::vertical_bounce(self.direction);
 		}
 
-		let blocks=&self.scene.blocks;
-		for block in blocks {
-			match self.collision(block) {
+
+		let blocks=&mut scene.blocks;
+		for i in 0..blocks.len() {
+			match self.collision(blocks[i]) {
 				Collision::At(x, y) => {
 					self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
+					blocks.remove(i);
+					break;
 				},
 				Collision::None => ()
 			};
@@ -156,13 +159,13 @@ impl<'a> Ball<'a> {
 	}
 }
 
-struct App<'a> {
-	ball: Ball<'a>,
+struct App {
+	ball: Ball,
 	palka: Palka,
-	scene: &'a Scene
+	scene: Scene
 }
 
-impl<'a> App<'a> {
+impl App {
 	fn render(&mut self, renderer: &mut sdl2::render::WindowCanvas) {
 
 		self.scene.render(renderer);
@@ -171,7 +174,7 @@ impl<'a> App<'a> {
 	}
 
 	fn update(&mut self) {
-		self.ball.update();
+		self.ball.update(&mut self.scene);
 	}
 }
 
@@ -181,12 +184,10 @@ fn main() {
 	let window=video.window("Arkanoid", 1000, 600).build().unwrap();
 	let mut renderer=window.into_canvas().build().unwrap();
 
-	let scene=Scene{blocks: make_blocks(10, 10, 990, 590, 5, 6), width: 1000, height: 600};
-
 	let mut app=App {
-		ball: Ball{circle: geometry::Circle{x: 350, y: 500, radius: 10.0}, direction: geometry::PI/4.0, speed: 2.0, scene: &scene},
+		ball: Ball{circle: geometry::Circle{x: 350, y: 500, radius: 10.0}, direction: geometry::PI/4.0, speed: 5.0},
 		palka: Palka{x: 300},
-		scene: &scene
+		scene: Scene{blocks: make_blocks(10, 10, 990, 590, 5, 6), width: 1000, height: 600}
 	};
 
 	let mut events=sdl.event_pump().unwrap();
