@@ -1,21 +1,5 @@
 use std::f32;
 
-#[derive(Copy, Clone)]
-pub struct Circle {
-	pub x: i32,
-	pub y: i32,
-	pub radius: f32
-}
-
-impl Circle {
-	pub fn corner(&self)->(i32, i32) {
-		(self.x-self.radius as i32, self.y-self.radius as i32)
-	}
-	pub fn center(&self)->(i32, i32) {
-		(self.x, self.y)
-	}
-}
-
 pub const PI:f32=3.14159265358;
 pub fn split(lenght: u32, width: u32, index: u32)->u32 {
     index*lenght/width

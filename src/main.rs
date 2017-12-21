@@ -1,12 +1,13 @@
 extern crate sdl2;
 
 mod geometry;
+mod circle;
 mod draw;
 
 use std::f32;
 
 use sdl2::pixels::Color;
-use sdl2::rect::{Rect, Point};
+use sdl2::rect::Rect;
 use sdl2::event;
 use sdl2::keyboard;
 
@@ -27,7 +28,7 @@ struct Scene {
 }
 
 struct Ball {
-	circle: geometry::Circle,
+	circle: circle::Circle,
 	direction: f32,
 	speed: f32
 }
@@ -36,11 +37,6 @@ struct Palka {
 	x: i32,
 	y: i32,
 	w: i32
-}
-
-enum Collision {
-	None,
-	At(i32, i32)
 }
 
 struct App {
@@ -106,57 +102,11 @@ impl Palka {
 }
 
 impl Ball {
-	fn to_rect(&self)->Rect {
-		Rect::new(self.circle.corner().0, self.circle.corner().1, self.circle.radius as u32*2, self.circle.radius as u32*2)
-	}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(Color::RGB(0,255,255));
 		draw::circle(renderer, self.circle, 0.1).unwrap();
 	}
-
-	fn collision(&self, rect: Rect)->Collision {
-		if self.to_rect().has_intersection(rect) {
-			let (left, up)=(rect.x, rect.y);
-			let (right, down)=(rect.x+Block::WIDTH as i32, rect.y+Block::HEIGHT as i32);
-			let size=self.circle.radius as i32*2;
-
-			let left_up=Rect::new(left-size, up-size, size as u32, size as u32);
-			let right_up=Rect::new(right, up-size, size as u32, size as u32);
-			let left_down=Rect::new(left-size, down, size as u32, size as u32);
-			let right_down=Rect::new(right, down, size as u32, size as u32);
-
-			let left_r=Rect::new(left-size, up, size as u32, Block::HEIGHT as u32);
-			let up_r=Rect::new(left, up-size, Block::WIDTH as u32, size as u32);
-			let right_r=Rect::new(right, up, size as u32, Block::HEIGHT as u32);
-			let down_r=Rect::new(left, down, Block::WIDTH as u32, size as u32);
-
-			let this=Point::new(self.circle.x, self.circle.y);
-
-			if left_up.contains_point(this) {
-				if geometry::distance(self.circle.center(), (left, up))<=self.circle.radius {Collision::At(left, up)}
-				else {Collision::None}
-			}
-			else if right_up.contains_point(this) {
-				if geometry::distance(self.circle.center(), (right, up))<=self.circle.radius {Collision::At(right, up)}
-				else {Collision::None}
-			}
-			else if left_down.contains_point(this) {
-				if geometry::distance(self.circle.center(), (left, down))<=self.circle.radius {Collision::At(left, down)}
-				else {Collision::None}
-			}
-			else if right_down.contains_point(this) {
-				if geometry::distance(self.circle.center(), (right, down))<=self.circle.radius {Collision::At(right, down)}
-				else {Collision::None}
-			}
-			else if left_r.contains_point(this) {Collision::At(left, self.circle.y)}
-			else if right_r.contains_point(this) {Collision::At(right, self.circle.y)}
-			else if up_r.contains_point(this) {Collision::At(self.circle.x, up)}
-			else if down_r.contains_point(this) {Collision::At(self.circle.x, down)}
-			else {Collision::None}
-		}
-		else {Collision::None}
-	}
-		
+	
 	fn go(&mut self) {
 		let (dx, dy)=geometry::to_cartesian(self.speed, self.direction);
 		self.circle.x+=dx;
@@ -177,30 +127,29 @@ impl Ball {
 
 		let blocks=&mut scene.blocks;
 		for i in 0..blocks.len() {
-			match self.collision(blocks[i].to_rect()) {
-				Collision::At(x, y) => {
+			match self.circle.collision(blocks[i].to_rect()) {
+				circle::Collision::At(x, y) => {
 					self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 					blocks.remove(i);
 					break;
 				},
-				Collision::None => ()
+				circle::Collision::None => ()
 			};
 		}
-		match self.collision(scene.palka.to_rect()) {
-			Collision::At(x, y) => {
+		match self.circle.collision(scene.palka.to_rect()) {
+			circle::Collision::At(x, y) => {
 				self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 				let dx=self.circle.x-scene.palka.x;
 				self.direction+=dx as f32/scene.palka.w as f32;
                 self.direction=self.direction.max(geometry::PI/6.0*7.0).min(geometry::PI/6.0*11.0);
 			},
-			Collision::None => ()
+			circle::Collision::None => ()
 		}
 	}
 }
 
 impl App {
 	fn render(&mut self, renderer: &mut sdl2::render::WindowCanvas) {
-
 		self.scene.render(renderer);
 		self.ball.render(renderer);
 		renderer.present();
@@ -223,7 +172,7 @@ fn main() {
 	let mut renderer=window.into_canvas().build().unwrap();
 
 	let mut app=App {
-		ball: Ball{circle: geometry::Circle{x: 350, y: 200, radius: 10.0}, direction: geometry::PI/2.0, speed: 3.0},
+		ball: Ball{circle: circle::Circle{x: 350, y: 200, radius: 10.0}, direction: geometry::PI/2.0, speed: 3.0},
 		scene: Scene{blocks: make_blocks(10, 10, 990, 590, 5, 6), width: 1000, height: 600, palka: Palka{x: 300, y: 580, w: 80}}
 	};
 
@@ -248,12 +197,12 @@ fn test_collision() {
 	let scene=Scene{width: 800, height:600, blocks: blocks, palka: Palka{x: 300, y: 580, w: 80}};
 
 	let block=Block{x: 400, y: 400, color: Color::RGB(0,0,0)};
-	let ball_1=Ball{circle: geometry::Circle{x: 410, y: 400-10+1, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_2=Ball{circle: geometry::Circle{x: 410, y: 400+Block::HEIGHT+10-1, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_3=Ball{circle: geometry::Circle{x: 400-10+1, y: 410, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_4=Ball{circle: geometry::Circle{x: 400+Block::WIDTH+10-1, y: 410, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_5=Ball{circle: geometry::Circle{x: 400+Block::WIDTH/2, y: 400+Block::HEIGHT+10-1, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_6=Ball{circle: geometry::Circle{x: 400-10, y: 400-10, radius: 10.0}, direction: 0.0, speed: 1.0};
+	let ball_1=Ball{circle: circle::Circle{x: 410, y: 400-10+1, radius: 10.0}, direction: 0.0, speed: 1.0};
+	let ball_2=Ball{circle: circle::Circle{x: 410, y: 400+Block::HEIGHT+10-1, radius: 10.0}, direction: 0.0, speed: 1.0};
+	let ball_3=Ball{circle: circle::Circle{x: 400-10+1, y: 410, radius: 10.0}, direction: 0.0, speed: 1.0};
+	let ball_4=Ball{circle: circle::Circle{x: 400+Block::WIDTH+10-1, y: 410, radius: 10.0}, direction: 0.0, speed: 1.0};
+	let ball_5=Ball{circle: circle::Circle{x: 400+Block::WIDTH/2, y: 400+Block::HEIGHT+10-1, radius: 10.0}, direction: 0.0, speed: 1.0};
+	let ball_6=Ball{circle: circle::Circle{x: 400-10, y: 400-10, radius: 10.0}, direction: 0.0, speed: 1.0};
 	assert!(!ball_1.collision(&block).unwrap().is_some());
 	assert!(!ball_2.collision(&block).unwrap().is_some());
 	assert!(!ball_3.collision(&block).unwrap().is_some());
