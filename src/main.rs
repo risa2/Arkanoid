@@ -5,6 +5,7 @@ mod circle;
 mod draw;
 
 use std::f32;
+use std::ops::Index;
 
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
@@ -18,7 +19,9 @@ struct Block {
 	y: i32
 }
 
-type Blocks=Vec<Block>;
+struct Blocks {
+	data: Vec<Block>
+}
 
 struct Scene {
 	width: i32,
@@ -44,17 +47,6 @@ struct App {
 	scene: Scene
 }
 
-fn make_blocks(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_count: u32)->Blocks {
-	let mut blocks: Blocks=vec![];
-	for y in 0..y_count {
-		for x in 0..x_count {
-			let (dst_x, dst_y)=(left+geometry::split(width, x_count, x), top+geometry::split(height, y_count, y));
-			blocks.push(Block{color: Color::RGB((x%2*255) as u8, ((x+1)%2*255) as u8, 0), x: dst_x as i32, y: dst_y as i32});
-		}
-	}
-	blocks
-}
-
 impl Block {
 	const WIDTH:i32=100;
 	const HEIGHT:i32=40;
@@ -66,15 +58,45 @@ impl Block {
 		renderer.fill_rect(self.to_rect()).unwrap();
 	}
 }
+
+impl Blocks {
+	fn new(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_count: u32)->Blocks {
+		let mut blocks: Vec<Block> =vec![];
+		for y in 0..y_count {
+			for x in 0..x_count {
+				let (dst_x, dst_y)=(left+geometry::split(width, x_count, x), top+geometry::split(height, y_count, y));
+				blocks.push(Block{color: Color::RGB((x%2*255) as u8, ((x+1)%2*255) as u8, 0), x: dst_x as i32, y: dst_y as i32});
+			}
+		}
+		Blocks{data: blocks}
+	}
+	fn len(&self)->usize {
+		self.data.len()
+	}
+	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
+		for block in &self.data {
+			block.render(renderer);
+		}
+	}
+	fn remove(&mut self, i: usize) {
+		self.data.remove(i);
+	}
+}
+
+impl Index<usize> for Blocks {
+	type Output=Block;
+	fn index(&self, i: usize)-> &Block {
+		&self.data[i]
+	}
+}
+
 impl Scene {
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(Color::RGB(0,200,0));
 		renderer.clear();
 
 		let blocks=&self.blocks;
-		for block in blocks {
-			block.render(renderer);
-		}
+		blocks.render(renderer);
 		self.palka.render(renderer);
 	}
 	fn update(&mut self, evt: &sdl2::EventPump) {
@@ -92,11 +114,12 @@ impl Palka {
 	}
 	fn update(&mut self, evt: &sdl2::EventPump, width: i32) {
 		let kb=evt.keyboard_state();
+		let shift=if kb.is_scancode_pressed(keyboard::Scancode::Space) {5} else {2};
 		if kb.is_scancode_pressed(keyboard::Scancode::Left) {
-			self.x=if self.x-self.w/2<3 {self.w/2} else {self.x-3}
+			self.x=if self.x-self.w/2<shift {self.w/2} else {self.x-shift}
 		}
 		if kb.is_scancode_pressed(keyboard::Scancode::Right) {
-            self.x=if self.x>width-3-self.w/2 {width-self.w/2} else {self.x+3}
+            self.x=if self.x>width-shift-self.w/2 {width-self.w/2} else {self.x+shift}
 		}
 	}
 }
@@ -161,7 +184,7 @@ impl App {
 	}
 
     fn end(&self)->bool {
-        self.ball.circle.y>=self.scene.height-self.ball.circle.radius as i32
+        self.ball.circle.y>=self.scene.height-self.ball.circle.radius as i32 self.scene.blocks.len()==0
     }
 }
 
@@ -173,7 +196,7 @@ fn main() {
 
 	let mut app=App {
 		ball: Ball{circle: circle::Circle{x: 350, y: 200, radius: 10.0}, direction: geometry::PI/2.0, speed: 3.0},
-		scene: Scene{blocks: make_blocks(10, 10, 990, 590, 5, 6), width: 1000, height: 600, palka: Palka{x: 300, y: 580, w: 80}}
+		scene: Scene{blocks: Blocks::new(10, 10, 990, 590, 5, 6), width: 1000, height: 600, palka: Palka{x: 300, y: 580, w: 80}}
 	};
 
 	let mut events=sdl.event_pump().unwrap();
