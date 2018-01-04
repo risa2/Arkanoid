@@ -42,9 +42,11 @@ struct Palka {
 	w: i32
 }
 
-struct App {
+struct App <'a> {
+	font: sdl2::ttf::Font<'a, 'static>,
 	ball: Ball,
-	scene: Scene
+	scene: Scene,
+	score: i32
 }
 
 impl Block {
@@ -171,32 +173,46 @@ impl Ball {
 	}
 }
 
-impl App {
+impl<'a> App<'a> {
 	fn render(&mut self, renderer: &mut sdl2::render::WindowCanvas) {
 		self.scene.render(renderer);
 		self.ball.render(renderer);
+		let text="Score: ".to_string()+&(self.score.to_string());
+		let img=self.font.render(&text).blended(Color{r:0, g:0, b:0, a:255}).unwrap();
+		let creator=renderer.texture_creator();
+		let texture=creator.create_texture_from_surface(img).unwrap();
+		let tinfo=texture.query();
+		renderer.copy(&texture, Rect::new(0, 0,tinfo.width, tinfo.height), Rect::new(0, 0,tinfo.width, tinfo.height));
+
 		renderer.present();
 	}
 
 	fn update(&mut self, evt: &sdl2::EventPump) {
+		let blocks=self.scene.blocks.len();
 		self.ball.update(&mut self.scene);
+		if self.scene.blocks.len()!=blocks {
+			self.score+=1;
+		}
 		self.scene.update(evt);
 	}
 
     fn end(&self)->bool {
-        self.ball.circle.y>=self.scene.height-self.ball.circle.radius as i32 self.scene.blocks.len()==0
+        self.ball.circle.y>=self.scene.height-self.ball.circle.radius as i32||self.scene.blocks.len()==0
     }
 }
 
 fn main() {
 	let sdl=sdl2::init().unwrap();
 	let video=sdl.video().unwrap();
+	let ttf=sdl2::ttf::init().unwrap();
 	let window=video.window("Arkanoid", 1000, 600).build().unwrap();
 	let mut renderer=window.into_canvas().build().unwrap();
 
 	let mut app=App {
+		font: ttf.load_font("font.ttf", 17).unwrap(),
 		ball: Ball{circle: circle::Circle{x: 350, y: 200, radius: 10.0}, direction: geometry::PI/2.0, speed: 3.0},
-		scene: Scene{blocks: Blocks::new(10, 10, 990, 590, 5, 6), width: 1000, height: 600, palka: Palka{x: 300, y: 580, w: 80}}
+		scene: Scene{blocks: Blocks::new(10, 10, 990, 590, 5, 6), width: 1000, height: 600, palka: Palka{x: 300, y: 580, w: 80}},
+		score: 0
 	};
 
 	let mut events=sdl.event_pump().unwrap();
@@ -212,24 +228,4 @@ fn main() {
 		app.render(&mut renderer);
 		std::thread::sleep(std::time::Duration::from_millis(20));
 	}
-}
-
-#[test]
-fn test_collision() {
-	let blocks=vec![];
-	let scene=Scene{width: 800, height:600, blocks: blocks, palka: Palka{x: 300, y: 580, w: 80}};
-
-	let block=Block{x: 400, y: 400, color: Color::RGB(0,0,0)};
-	let ball_1=Ball{circle: circle::Circle{x: 410, y: 400-10+1, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_2=Ball{circle: circle::Circle{x: 410, y: 400+Block::HEIGHT+10-1, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_3=Ball{circle: circle::Circle{x: 400-10+1, y: 410, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_4=Ball{circle: circle::Circle{x: 400+Block::WIDTH+10-1, y: 410, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_5=Ball{circle: circle::Circle{x: 400+Block::WIDTH/2, y: 400+Block::HEIGHT+10-1, radius: 10.0}, direction: 0.0, speed: 1.0};
-	let ball_6=Ball{circle: circle::Circle{x: 400-10, y: 400-10, radius: 10.0}, direction: 0.0, speed: 1.0};
-	assert!(!ball_1.collision(&block).unwrap().is_some());
-	assert!(!ball_2.collision(&block).unwrap().is_some());
-	assert!(!ball_3.collision(&block).unwrap().is_some());
-	assert!(!ball_4.collision(&block).unwrap().is_some());
-	assert!(!ball_5.collision(&block).unwrap().is_some());
-	assert!(!ball_6.collision(&block).is_some());
 }

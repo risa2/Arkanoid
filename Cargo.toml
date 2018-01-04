@@ -3,5 +3,7 @@ name = "arkanoid"
 version = "0.1.0"
 authors = ["robotika"]
 
-[dependencies]
-sdl2 = "0.31.0"
+[dependencies.sdl2]
+version="0.31.0"
+default-features=false
+features=["ttf"]
