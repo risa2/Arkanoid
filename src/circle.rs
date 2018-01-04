@@ -3,6 +3,7 @@ extern crate sdl2;
 use sdl2::rect::{Rect, Point};
 use geometry;
 
+#[derive(Debug)]
 pub enum Collision {
 	None,
 	At(i32, i32)
@@ -67,5 +68,17 @@ impl Circle {
 			else {Collision::None}
 		}
 		else {Collision::None}
+	}
+}
+
+#[test]
+fn test_collision() {
+	let palka=Rect::new(100, 100, 120, 10);
+	let col_a=Circle{x: 140, y: 105, radius: 10.0}.collision(palka);
+	if let Collision::At(x, y)=col_a {
+		assert_eq!(x, 140);
+	}
+	else {
+		assert!(false);
 	}
 }

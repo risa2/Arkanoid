@@ -116,7 +116,7 @@ impl Palka {
 	}
 	fn update(&mut self, evt: &sdl2::EventPump, width: i32) {
 		let kb=evt.keyboard_state();
-		let shift=if kb.is_scancode_pressed(keyboard::Scancode::Space) {5} else {2};
+		let shift=4;
 		if kb.is_scancode_pressed(keyboard::Scancode::Left) {
 			self.x=if self.x-self.w/2<shift {self.w/2} else {self.x-shift}
 		}
@@ -205,12 +205,13 @@ fn main() {
 	let sdl=sdl2::init().unwrap();
 	let video=sdl.video().unwrap();
 	let ttf=sdl2::ttf::init().unwrap();
+
 	let window=video.window("Arkanoid", 1000, 600).build().unwrap();
 	let mut renderer=window.into_canvas().build().unwrap();
 
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
-		ball: Ball{circle: circle::Circle{x: 350, y: 200, radius: 10.0}, direction: geometry::PI/2.0, speed: 3.0},
+		ball: Ball{circle: circle::Circle{x: 350, y: 200, radius: 10.0}, direction: geometry::PI/2.0, speed: 4.5},
 		scene: Scene{blocks: Blocks::new(10, 10, 990, 590, 5, 6), width: 1000, height: 600, palka: Palka{x: 300, y: 580, w: 80}},
 		score: 0
 	};
@@ -227,5 +228,8 @@ fn main() {
 		app.update(&events);
 		app.render(&mut renderer);
 		std::thread::sleep(std::time::Duration::from_millis(20));
+	}
+	if app.end() {
+		sdl2::messagebox::show_simple_message_box(sdl2::messagebox::MessageBoxFlag::empty(), "End of game", if app.scene.blocks.len()==0{"You win"}else {"You lose"}, Option::None);
 	}
 }
