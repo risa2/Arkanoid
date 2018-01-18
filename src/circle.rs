@@ -11,20 +11,20 @@ pub enum Collision {
 
 #[derive(Copy, Clone)]
 pub struct Circle {
-	pub x: i32,
-	pub y: i32,
+	pub x: f32,
+	pub y: f32,
 	pub radius: f32
 }
 
 impl Circle {
 	pub fn corner(&self)->(i32, i32) {
-		(self.x-self.radius as i32, self.y-self.radius as i32)
+		(self.x as i32-self.radius as i32, self.y as i32-self.radius as i32)
 	}
 	pub fn center(&self)->(i32, i32) {
-		(self.x, self.y)
+		(self.x as i32, self.y as i32)
 	}
 	pub fn to_point(&self)->Point {
-		Point::new(self.x, self.y)
+		Point::new(self.x as i32, self.y as i32)
 	}
 	pub fn to_rect(&self)->Rect {
 		Rect::new(self.corner().0, self.corner().1, self.radius as u32*2, self.radius as u32*2)
@@ -61,10 +61,10 @@ impl Circle {
 				if geometry::distance(self.center(), (right, down))<=self.radius {Collision::At(right, down)}
 				else {Collision::None}
 			}
-			else if left_r.contains_point(self.to_point())	{Collision::At(left, self.y)}
-			else if right_r.contains_point(self.to_point())	{Collision::At(right, self.y)}
-			else if up_r.contains_point(self.to_point())	{Collision::At(self.x, up)}
-			else if down_r.contains_point(self.to_point())	{Collision::At(self.x, down)}
+			else if left_r.contains_point(self.to_point())	{Collision::At(left, self.y as i32)}
+			else if right_r.contains_point(self.to_point())	{Collision::At(right, self.y as i32)}
+			else if up_r.contains_point(self.to_point())	{Collision::At(self.x as i32, up)}
+			else if down_r.contains_point(self.to_point())	{Collision::At(self.x as i32, down)}
 			else {Collision::None}
 		}
 		else {Collision::None}

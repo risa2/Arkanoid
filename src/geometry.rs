@@ -4,8 +4,8 @@ pub const PI:f32=3.14159265358;
 pub fn split(lenght: u32, width: u32, index: u32)->u32 {
     index*lenght/width
 }
-pub fn to_cartesian(lenght: f32, angle: f32)->(i32, i32) {
-    ((lenght*angle.cos()) as i32, (lenght*angle.sin()) as i32)
+pub fn to_cartesian(lenght: f32, angle: f32)->(f32, f32) {
+    (lenght*angle.cos(), lenght*angle.sin())
 }
 
 fn relative_distance(dist: (i32, i32))->f32 {

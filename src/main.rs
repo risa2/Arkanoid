@@ -33,7 +33,7 @@ struct Scene {
 struct Ball {
 	circle: circle::Circle,
 	direction: f32,
-	speed: f32
+	speed: i32
 }
 
 struct Palka {
@@ -116,7 +116,7 @@ impl Palka {
 	}
 	fn update(&mut self, evt: &sdl2::EventPump, width: i32) {
 		let kb=evt.keyboard_state();
-		let shift=4;
+		let shift=5;
 		if kb.is_scancode_pressed(keyboard::Scancode::Left) {
 			self.x=if self.x-self.w/2<shift {self.w/2} else {self.x-shift}
 		}
@@ -133,42 +133,44 @@ impl Ball {
 	}
 	
 	fn go(&mut self) {
-		let (dx, dy)=geometry::to_cartesian(self.speed, self.direction);
+		let (dx, dy)=geometry::to_cartesian(1.0, self.direction);
 		self.circle.x+=dx;
 		self.circle.y+=dy;
 	}
 
 	fn update(&mut self, scene: &mut Scene) {
-		self.go();
-	
-		if self.circle.x>scene.width-self.circle.radius as i32 || self.circle.x<self.circle.radius as i32 {
-			self.direction=geometry::horizontal_bounce(self.direction);
-		}
+		for i in 0..self.speed {
+			self.go();
 
-		if self.circle.y>scene.height-self.circle.radius as i32 || self.circle.y<self.circle.radius as i32 {
-			self.direction=geometry::vertical_bounce(self.direction);
-		}
+			if self.circle.x>scene.width as f32-self.circle.radius || self.circle.x<self.circle.radius {
+				self.direction=geometry::horizontal_bounce(self.direction);
+			}
+
+			if self.circle.y>scene.height as f32-self.circle.radius || self.circle.y<self.circle.radius {
+				self.direction=geometry::vertical_bounce(self.direction);
+			}
 
 
-		let blocks=&mut scene.blocks;
-		for i in 0..blocks.len() {
-			match self.circle.collision(blocks[i].to_rect()) {
+			let blocks=&mut scene.blocks;
+			for i in 0..blocks.len() {
+				match self.circle.collision(blocks[i].to_rect()) {
+					circle::Collision::At(x, y) => {
+						self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
+						blocks.remove(i);
+						break;
+					},
+					circle::Collision::None => ()
+				};
+			}
+			match self.circle.collision(scene.palka.to_rect()) {
 				circle::Collision::At(x, y) => {
 					self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-					blocks.remove(i);
-					break;
+					let dx=self.circle.x-scene.palka.x as f32;
+					self.direction+=dx as f32/scene.palka.w as f32;
+					self.direction=self.direction.max(geometry::PI/6.0*7.0).min(geometry::PI/6.0*11.0);
 				},
 				circle::Collision::None => ()
-			};
-		}
-		match self.circle.collision(scene.palka.to_rect()) {
-			circle::Collision::At(x, y) => {
-				self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-				let dx=self.circle.x-scene.palka.x;
-				self.direction+=dx as f32/scene.palka.w as f32;
-                self.direction=self.direction.max(geometry::PI/6.0*7.0).min(geometry::PI/6.0*11.0);
-			},
-			circle::Collision::None => ()
+			}
 		}
 	}
 }
@@ -197,7 +199,7 @@ impl<'a> App<'a> {
 	}
 
     fn end(&self)->bool {
-        self.ball.circle.y>=self.scene.height-self.ball.circle.radius as i32||self.scene.blocks.len()==0
+        self.ball.circle.y+self.ball.circle.radius+1.0>=self.scene.height as f32||self.scene.blocks.len()==0
     }
 }
 
@@ -211,7 +213,7 @@ fn main() {
 
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
-		ball: Ball{circle: circle::Circle{x: 350, y: 200, radius: 10.0}, direction: geometry::PI/2.0, speed: 4.5},
+		ball: Ball{circle: circle::Circle{x: 350.0, y: 200.0, radius: 10.0}, direction: geometry::PI/2.0, speed: 5},
 		scene: Scene{blocks: Blocks::new(10, 10, 990, 590, 5, 6), width: 1000, height: 600, palka: Palka{x: 300, y: 580, w: 80}},
 		score: 0
 	};
@@ -230,6 +232,6 @@ fn main() {
 		std::thread::sleep(std::time::Duration::from_millis(20));
 	}
 	if app.end() {
-		sdl2::messagebox::show_simple_message_box(sdl2::messagebox::MessageBoxFlag::empty(), "End of game", if app.scene.blocks.len()==0{"You win"}else {"You lose"}, Option::None);
+		sdl2::messagebox::show_simple_message_box(sdl2::messagebox::MessageBoxFlag::empty(), "End of game", if app.scene.blocks.len()==0{"You win"}else {"You lose"}, Option::None).unwrap();
 	}
 }
