@@ -1,6 +1,7 @@
 extern crate sdl2;
 
 use sdl2::rect::{Rect, Point};
+use sdl2::pixels::Color;
 use geometry;
 
 #[derive(Debug)]
@@ -68,6 +69,10 @@ impl Circle {
 			else {Collision::None}
 		}
 		else {Collision::None}
+	}
+	pub fn render(&self, renderer: &mut sdl2::render::WindowCanvas, col: Color) {
+		renderer.filled_circle(self.x as i16, self.y as i16, self.radius as i16, col).unwrap();
+		renderer.aa_circle(self.x as i16, self.y as i16, self.radius as i16, col).unwrap();
 	}
 }
 
