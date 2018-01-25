@@ -6,4 +6,4 @@ authors = ["robotika"]
 [dependencies.sdl2]
 version="0.31.0"
 default-features=false
-features=["ttf"]
+features=["ttf", "gfx"]

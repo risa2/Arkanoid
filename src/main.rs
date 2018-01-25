@@ -11,6 +11,7 @@ use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::event;
 use sdl2::keyboard;
+use sdl2::gfx::primitives::DrawRenderer;
 
 #[derive(Copy, Clone)]
 struct Block {
@@ -129,7 +130,8 @@ impl Palka {
 impl Ball {
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(Color::RGB(0,255,255));
-		draw::circle(renderer, self.circle, 0.1).unwrap();
+		renderer.filled_circle(self.circle.x as i16, self.circle.y as i16, self.circle.radius as i16, Color::RGB(0, 0, 255)).unwrap();
+		renderer.aa_circle(self.circle.x as i16, self.circle.y as i16, self.circle.radius as i16, Color::RGB(0, 0, 255)).unwrap();
 	}
 	
 	fn go(&mut self) {
@@ -184,7 +186,7 @@ impl<'a> App<'a> {
 		let creator=renderer.texture_creator();
 		let texture=creator.create_texture_from_surface(img).unwrap();
 		let tinfo=texture.query();
-		renderer.copy(&texture, Rect::new(0, 0,tinfo.width, tinfo.height), Rect::new(0, 0,tinfo.width, tinfo.height));
+		renderer.copy(&texture, Rect::new(0, 0,tinfo.width, tinfo.height), Rect::new(0, 0,tinfo.width, tinfo.height)).unwrap();
 
 		renderer.present();
 	}

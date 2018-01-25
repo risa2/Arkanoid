@@ -7,10 +7,6 @@ use sdl2::rect::Point;
 use std::f32;
 use std::result::Result;
 
-fn horizontal(line: (Point, Point))->bool {
-	line.0.x==line.1.x
-}
-
 pub fn triangle<T: sdl2::render::RenderTarget>(out: &mut sdl2::render::Canvas<T>, p: [Point; 3]) {
 	let highest=p.iter().fold(Point::new(0x7fffffff, 0x7fffffff), |state, &p| {
 		if p.y<state.y {p} else {state}
