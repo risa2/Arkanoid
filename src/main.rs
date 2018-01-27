@@ -8,8 +8,6 @@ use std::f32;
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::event;
-use sdl2::keyboard;
-use sdl2::gfx::primitives::DrawRenderer;
 
 #[derive(Copy, Clone)]
 struct Block {
@@ -27,18 +25,19 @@ struct Scene {
 	evt: sdl2::EventPump
 }
 
+#[derive(Copy, Clone)]
 struct Ball {
 	circle: circle::Circle,
 	direction: f32,
 	speed: i32
 }
 
+#[derive(Copy, Clone)]
 struct Palka {
-	x: i32,
-	y: i32,
-	w: i32
+	pos: sdl2::rect::Rect
 }
 
+#[derive(Copy, Clone)]
 struct NewBallBonus {
 	circle: circle::Circle
 }
@@ -89,8 +88,8 @@ impl GameObject for NewBallBonus {
 		self.circle.render(renderer, Color::RGB(255, 128, 0));
 	}
 	fn update(&mut self, scene: &mut Scene) {
-		self.circle.y-=1;
-		match self.circle.collision(scene.palka.to_rect()) {
+		self.circle.y-=1.0;
+		match self.circle.collision(scene.objects.iter().find(|&x|x.is_palka().is_some()).unwrap().to_rect()) {
 			circle::Collision::At(x, y) => {
 
 			},
@@ -121,16 +120,20 @@ impl Scene {
 	}
 	fn update(&mut self) {
 		for object in self.objects {
-			object.render(self);
+			object.update(self);
 		}
 	}
 }
+
 impl Palka {
-	const HEIGHT: i32 = 10;
+	fn new(x: i32, y: i32, w: u32, h: u32)->Box<GameObject> {
+		Box::new(Palka{pos: Rect::new(x, y, w, h)})
+	}
 }
+
 impl GameObject for Palka {
 	fn to_rect(&self) -> Rect {
-		Rect::new(self.x - self.w / 2, self.y, self.w as u32, Palka::HEIGHT as u32)
+		self.pos
 	}
 	fn is_palka(&self)->Option<&Palka> {
 		Option::Some(self)
@@ -141,13 +144,18 @@ impl GameObject for Palka {
 	}
 	fn update(&mut self, scene: &mut Scene) {
 		let kb=scene.evt.keyboard_state();
-		let shift=5;
-		if kb.is_scancode_pressed(keyboard::Scancode::Left) {
-			self.x=if self.x-self.w/2<shift {self.w/2} else {self.x-shift}
+		if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Left) {
+			self.pos.x=(self.pos.x-5).max(0)
 		}
-		if kb.is_scancode_pressed(keyboard::Scancode::Right) {
-            self.x=if self.x>scene.width-shift-self.w/2 {scene.width-self.w/2} else {self.x+shift}
+		if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Right) {
+            self.pos.x=(self.pos.x+5).min(scene.width-self.pos.w)
 		}
+	}
+}
+
+impl Ball {
+	fn new(x: i32, y: i32, radius: i32, speed: i32)->Box<GameObject> {
+		Box::new(Ball{circle: circle::Circle{x: x as f32, y: y as f32, radius: radius as f32}, direction: geometry::PI/2.0, speed: speed})
 	}
 }
 
@@ -187,9 +195,9 @@ impl GameObject for Ball {
 						}
 						if let Some(palka)=objects[i].is_palka() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-							let dx=self.circle.x-scene.palka.x as f32;
-							self.direction+=dx as f32/scene.palka.w as f32;
-							self.direction=self.direction.max(geometry::PI/6.0*7.0).min(geometry::PI/6.0*11.0);
+							let dx=self.circle.x-(palka.pos.x-palka.pos.w/2) as f32;
+							self.direction+=dx as f32/palka.pos.w as f32;
+							self.direction=self.direction.max(geometry::PI/8.0*9.0).min(geometry::PI/8.0*15.0);
 						}
 					},
 					circle::Collision::None => ()
@@ -200,34 +208,31 @@ impl GameObject for Ball {
 }
 
 impl<'a> App<'a> {
-	fn render_text(&self, renderer: &mut sdl2::render::WindowCanvas, text: &str) {
+	fn render_text(&self, renderer: &mut sdl2::render::WindowCanvas, text: String) {
 		let img=self.font.render(&text).blended(Color::RGB(0, 0, 0)).unwrap();
 		let creator=renderer.texture_creator();
 		let texture=creator.create_texture_from_surface(img).unwrap();
 		let t_info=texture.query();
-		renderer.copy(&texture, Rect::new(0, 0,t_info.width, t_info.height), Rect::new(0, 0,t_info.width, t_info.height)).unwrap();
+		renderer.copy(&texture, Rect::new(0,0, t_info.width, t_info.height), Rect::new(0, 0,t_info.width, t_info.height)).unwrap();
 	}
 	fn render(&mut self, renderer: &mut sdl2::render::WindowCanvas) {
 		self.scene.render(renderer);
-		self.render_text(renderer, "Score: ".to_string()+&(self.score.to_string()));
+		self.render_text(renderer, format!("Score: {}", self.score));
 
 		renderer.present();
 	}
 
 	fn update(&mut self) {
-		let blocks=self.scene.blocks.len();
-		self.ball.update(&mut self.scene);
-		if self.scene.blocks.len()!=blocks {
-			self.score+=1;
-		}
+		let blocks=self.scene.objects.iter().filter(|&x|x.is_block().is_some()).count() as i32;
 		self.scene.update();
+		self.score+=blocks-self.scene.objects.iter().filter(|&x|x.is_block().is_some()).count() as i32;
 	}
 
-	fn lose(&self) {
-		self.scene.objects.find(|&x|x.is_ball().is_some()).to_rect().bottom()>=self.scene.height as f32-1.0
+	fn lose(&self)->bool {
+		self.scene.objects.iter().any(|&x|x.is_ball().is_some()&&x.to_rect().bottom()>=self.scene.height-1)
 	}
-	fn win(&self) {
-		!self.scene.objects.any(|&x|x.is_block().is_some())
+	fn win(&self)->bool {
+		!self.scene.objects.iter().any(|&x|x.is_block().is_some())
 	}
     fn end(&self)->bool {
         self.lose()||self.win()
@@ -245,7 +250,7 @@ fn main() {
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
 		scene: Scene{objects: make_blocks(10, 10, 990, 590, 5, 6)
-			.extend([Palka{x: 300, y: 580, w: 80}, Ball{circle: circle::Circle{x: 350.0, y: 200.0, radius: 10.0}, direction: geometry::PI/2.0, speed: 5}]),
+			.extend_from_slice([Palka::new(300, 580, 80, 10), Ball::new(350, 200, 10, 5)]),
 				width: 1000, height: 600, evt: sdl.event_pump().unwrap()},
 		score: 0
 	};

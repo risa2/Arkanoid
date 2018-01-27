@@ -1,8 +1,7 @@
 extern crate sdl2;
 
-use sdl2::rect::{Rect, Point};
-use sdl2::pixels::Color;
 use geometry;
+use sdl2::gfx::primitives::DrawRenderer;
 
 #[derive(Debug)]
 pub enum Collision {
@@ -24,27 +23,27 @@ impl Circle {
 	pub fn center(&self)->(i32, i32) {
 		(self.x as i32, self.y as i32)
 	}
-	pub fn to_point(&self)->Point {
-		Point::new(self.x as i32, self.y as i32)
+	pub fn to_point(&self)->sdl2::rect::Point {
+		sdl2::rect::Point::new(self.x as i32, self.y as i32)
 	}
-	pub fn to_rect(&self)->Rect {
-		Rect::new(self.corner().0, self.corner().1, self.radius as u32*2, self.radius as u32*2)
+	pub fn to_rect(&self)->sdl2::rect::Rect {
+		sdl2::rect::Rect::new(self.corner().0, self.corner().1, self.radius as u32*2, self.radius as u32*2)
 	}
-	pub fn collision(&self, rect: Rect)->Collision {
+	pub fn collision(&self, rect: sdl2::rect::Rect)->Collision {
 		if self.to_rect().has_intersection(rect) {
 			let (left, up)=(rect.x, rect.y);
 			let (right, down)=(rect.x+rect.w as i32, rect.y+rect.h as i32);
 			let size=self.radius as i32*2;
 
-			let left_up=Rect::new(left-size, up-size, size as u32, size as u32);
-			let right_up=Rect::new(right, up-size, size as u32, size as u32);
-			let left_down=Rect::new(left-size, down, size as u32, size as u32);
-			let right_down=Rect::new(right, down, size as u32, size as u32);
+			let left_up=sdl2::rect::Rect::new(left-size, up-size, size as u32, size as u32);
+			let right_up=sdl2::rect::Rect::new(right, up-size, size as u32, size as u32);
+			let left_down=sdl2::rect::Rect::new(left-size, down, size as u32, size as u32);
+			let right_down=sdl2::rect::Rect::new(right, down, size as u32, size as u32);
 
-			let left_r=Rect::new(left-size, up, size as u32, rect.h as u32);
-			let up_r=Rect::new(left, up-size, rect.w as u32, size as u32);
-			let right_r=Rect::new(right, up, size as u32, rect.h as u32);
-			let down_r=Rect::new(left, down, rect.w as u32, size as u32);
+			let left_r=sdl2::rect::Rect::new(left-size, up, size as u32, rect.h as u32);
+			let up_r=sdl2::rect::Rect::new(left, up-size, rect.w as u32, size as u32);
+			let right_r=sdl2::rect::Rect::new(right, up, size as u32, rect.h as u32);
+			let down_r=sdl2::rect::Rect::new(left, down, rect.w as u32, size as u32);
 
 			if left_up.contains_point(self.to_point()) {
 				if geometry::distance(self.center(), (left, up))<=self.radius {Collision::At(left, up)}
@@ -70,7 +69,7 @@ impl Circle {
 		}
 		else {Collision::None}
 	}
-	pub fn render(&self, renderer: &mut sdl2::render::WindowCanvas, col: Color) {
+	pub fn render(&self, renderer: &mut sdl2::render::WindowCanvas, col: sdl2::pixels::Color) {
 		renderer.filled_circle(self.x as i16, self.y as i16, self.radius as i16, col).unwrap();
 		renderer.aa_circle(self.x as i16, self.y as i16, self.radius as i16, col).unwrap();
 	}
@@ -78,7 +77,7 @@ impl Circle {
 
 #[test]
 fn test_collision() {
-	let palka=Rect::new(100, 100, 120, 10);
+	let palka=sdl2::rect::Rect::new(100, 100, 120, 10);
 	let col_a=Circle{x: 140, y: 105, radius: 10.0}.collision(palka);
 	if let Collision::At(x, y)=col_a {
 		assert_eq!(x, 140);
