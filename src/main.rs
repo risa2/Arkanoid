@@ -9,20 +9,33 @@ use sdl2::pixels::Color;
 use sdl2::rect::Rect;
 use sdl2::event;
 
+trait GameObject {
+	fn update(&mut self, scene: &mut Scene) {}
+	fn render(&self, renderer: &mut sdl2::render::WindowCanvas);
+	fn to_rect(&self)-> Rect;
+	fn is_block(&self)->bool {
+		false
+	}
+	fn is_ball(&self)->bool {
+		false
+	}
+	fn is_palka(&self)->bool {
+		false
+	}
+}
+
+struct Scene {
+	width: i32,
+	height: i32,
+	objects: Vec<Box<GameObject>>,
+	evt: sdl2::EventPump
+}
+
 #[derive(Copy, Clone)]
 struct Block {
 	color: Color,
 	x: i32,
 	y: i32
-}
-
-type ObjectList=Vec<Box<GameObject>>;
-
-struct Scene {
-	width: i32,
-	height: i32,
-	objects: ObjectList,
-	evt: sdl2::EventPump
 }
 
 #[derive(Copy, Clone)]
@@ -48,21 +61,6 @@ struct App <'a> {
 	score: i32
 }
 
-trait GameObject {
-	fn update(&mut self, scene: &mut Scene) {}
-	fn render(&self, renderer: &mut sdl2::render::WindowCanvas);
-	fn to_rect(&self) -> Rect;
-	fn is_block(&self)->Option<&Block> {
-		Option::None
-	}
-	fn is_palka(&self)->Option<&Palka> {
-		Option::None
-	}
-	fn is_ball(&self)->Option<&Ball> {
-		Option::None
-	}
-}
-
 impl Block {
 	const WIDTH: i32 = 100;
 	const HEIGHT: i32 = 40;
@@ -75,8 +73,8 @@ impl GameObject for Block {
 		renderer.set_draw_color(self.color);
 		renderer.fill_rect(self.to_rect()).unwrap();
 	}
-	fn is_block(&self)->Option<&Block> {
-		Option::Some(self)
+	fn is_block(&self)->bool {
+		true
 	}
 }
 
@@ -89,7 +87,7 @@ impl GameObject for NewBallBonus {
 	}
 	fn update(&mut self, scene: &mut Scene) {
 		self.circle.y-=1.0;
-		match self.circle.collision(scene.objects.iter().find(|&x|x.is_palka().is_some()).unwrap().to_rect()) {
+		match self.circle.collision(scene.objects.iter().find(|&x|x.is_palka()).unwrap().to_rect()) {
 			circle::Collision::At(x, y) => {
 
 			},
@@ -98,8 +96,8 @@ impl GameObject for NewBallBonus {
 	}
 }
 
-fn make_blocks(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_count: u32)->ObjectList {
-	let mut blocks: ObjectList=vec![];
+fn make_blocks(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_count: u32)->Vec<Box<GameObject>> {
+	let mut blocks: Vec<Box<GameObject>>=vec![];
 	for y in 0..y_count {
 		for x in 0..x_count {
 			let (dst_x, dst_y)=(left+geometry::split(width, x_count, x), top+geometry::split(height, y_count, y));
@@ -126,8 +124,8 @@ impl Scene {
 }
 
 impl Palka {
-	fn new(x: i32, y: i32, w: u32, h: u32)->Box<GameObject> {
-		Box::new(Palka{pos: Rect::new(x, y, w, h)})
+	fn new(x: i32, y: i32, w: u32, h: u32)->Palka {
+		Palka{pos: Rect::new(x, y, w, h)}
 	}
 }
 
@@ -135,8 +133,8 @@ impl GameObject for Palka {
 	fn to_rect(&self) -> Rect {
 		self.pos
 	}
-	fn is_palka(&self)->Option<&Palka> {
-		Option::Some(self)
+	fn is_palka(&self)->bool {
+		true
 	}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(Color::RGB(0,0,0));
@@ -154,8 +152,8 @@ impl GameObject for Palka {
 }
 
 impl Ball {
-	fn new(x: i32, y: i32, radius: i32, speed: i32)->Box<GameObject> {
-		Box::new(Ball{circle: circle::Circle{x: x as f32, y: y as f32, radius: radius as f32}, direction: geometry::PI/2.0, speed: speed})
+	fn new(x: i32, y: i32, radius: i32, speed: i32)->Ball {
+		Ball{circle: circle::Circle{x: x as f32, y: y as f32, radius: radius as f32}, direction: geometry::PI/2.0, speed: speed}
 	}
 }
 
@@ -166,8 +164,8 @@ impl GameObject for Ball {
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		self.circle.render(renderer, Color::RGB(0, 0, 255));
 	}
-	fn is_ball(&self)->Option<&Ball> {
-		Option::Some(self)
+	fn is_ball(&self)->bool {
+		true
 	}
 
 	fn update(&mut self, scene: &mut Scene) {
@@ -189,14 +187,14 @@ impl GameObject for Ball {
 			for i in 0..objects.len() {
 				match self.circle.collision(objects[i].to_rect()) {
 					circle::Collision::At(x, y) => {
-						if let Some(block)=objects[i].is_block() {
+						if objects[i].is_block() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 							objects.remove(i);
 						}
-						if let Some(palka)=objects[i].is_palka() {
+						if objects[i].is_palka() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-							let dx=self.circle.x-(palka.pos.x-palka.pos.w/2) as f32;
-							self.direction+=dx as f32/palka.pos.w as f32;
+							let dx=self.circle.x-objects[i].to_rect().center().x as f32;
+							self.direction+=dx as f32/objects[i].to_rect().w as f32;
 							self.direction=self.direction.max(geometry::PI/8.0*9.0).min(geometry::PI/8.0*15.0);
 						}
 					},
@@ -223,16 +221,16 @@ impl<'a> App<'a> {
 	}
 
 	fn update(&mut self) {
-		let blocks=self.scene.objects.iter().filter(|&x|x.is_block().is_some()).count() as i32;
+		let blocks=self.scene.objects.iter().filter(|&x|x.is_block()).count() as i32;
 		self.scene.update();
-		self.score+=blocks-self.scene.objects.iter().filter(|&x|x.is_block().is_some()).count() as i32;
+		self.score+=blocks-self.scene.objects.iter().filter(|&x|x.is_block()).count() as i32;
 	}
 
 	fn lose(&self)->bool {
-		self.scene.objects.iter().any(|&x|x.is_ball().is_some()&&x.to_rect().bottom()>=self.scene.height-1)
+		self.scene.objects.iter().any(|&x|x.is_ball()&&x.to_rect().bottom()>=self.scene.height-1)
 	}
 	fn win(&self)->bool {
-		!self.scene.objects.iter().any(|&x|x.is_block().is_some())
+		!self.scene.objects.iter().any(|&x|x.is_block())
 	}
     fn end(&self)->bool {
         self.lose()||self.win()
@@ -250,7 +248,7 @@ fn main() {
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
 		scene: Scene{objects: make_blocks(10, 10, 990, 590, 5, 6)
-			.extend_from_slice([Palka::new(300, 580, 80, 10), Ball::new(350, 200, 10, 5)]),
+			.extend([Box::<GameObject>::new(Palka::new(300, 580, 80, 10)), Box::<GameObject>::new(Ball::new(350, 200, 10, 5))].to_vec()),
 				width: 1000, height: 600, evt: sdl.event_pump().unwrap()},
 		score: 0
 	};
