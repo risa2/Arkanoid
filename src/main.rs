@@ -78,7 +78,7 @@ impl GameObject for Block {
 	}
 }
 
-impl GameObject for NewBallBonus {
+/*impl GameObject for NewBallBonus {
 	fn to_rect(&self) -> Rect {
 		self.circle.to_rect()
 	}
@@ -94,7 +94,7 @@ impl GameObject for NewBallBonus {
 			circle::Collision::None => ()
 		}
 	}
-}
+}*/
 
 fn make_blocks(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_count: u32)->Vec<Box<GameObject>> {
 	let mut blocks: Vec<Box<GameObject>>=vec![];
@@ -112,13 +112,17 @@ impl Scene {
 		renderer.set_draw_color(Color::RGB(0,200,0));
 		renderer.clear();
 
-		for object in self.objects {
+		for object in &self.objects {
 			object.render(renderer);
 		}
 	}
 	fn update(&mut self) {
-		for object in self.objects {
-			object.update(self);
+		let mut i=0;
+		while i<self.objects.len() {
+			let mut obj=self.objects.remove(i);
+			obj.update(self);
+			self.objects.insert(i, obj);
+			i+=1;
 		}
 	}
 }
@@ -169,7 +173,7 @@ impl GameObject for Ball {
 	}
 
 	fn update(&mut self, scene: &mut Scene) {
-		for i in 0..self.speed {
+		for _ in 0..self.speed {
 			let (dx, dy)=geometry::to_cartesian(1.0, self.direction);
 			self.circle.x+=dx;
 			self.circle.y+=dy;
@@ -227,10 +231,10 @@ impl<'a> App<'a> {
 	}
 
 	fn lose(&self)->bool {
-		self.scene.objects.iter().any(|&x|x.is_ball()&&x.to_rect().bottom()>=self.scene.height-1)
+		self.scene.objects.iter().any(|ref x|x.is_ball()&&x.to_rect().bottom()>=self.scene.height-1)
 	}
 	fn win(&self)->bool {
-		!self.scene.objects.iter().any(|&x|x.is_block())
+		!self.scene.objects.iter().any(|ref x|x.is_block())
 	}
     fn end(&self)->bool {
         self.lose()||self.win()
@@ -245,10 +249,12 @@ fn main() {
 	let window=video.window("Arkanoid", 1000, 600).build().unwrap();
 	let mut renderer=window.into_canvas().build().unwrap();
 
+	let mut tmp_vec=make_blocks(10, 10, 990, 590, 5, 6);
+	tmp_vec.push(Box::new(Palka::new(300, 580, 80, 10)) as Box<GameObject>);
+	tmp_vec.push(Box::new(Ball::new(350, 200, 10, 5)) as Box<GameObject>);
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
-		scene: Scene{objects: make_blocks(10, 10, 990, 590, 5, 6)
-			.extend([Box::<GameObject>::new(Palka::new(300, 580, 80, 10)), Box::<GameObject>::new(Ball::new(350, 200, 10, 5))].to_vec()),
+		scene: Scene{objects: tmp_vec,
 				width: 1000, height: 600, evt: sdl.event_pump().unwrap()},
 		score: 0
 	};
