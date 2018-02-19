@@ -121,7 +121,7 @@ impl Scene {
 		while i<self.objects.len() {
 			let mut obj=self.objects.remove(i);
 			obj.update(self);
-			self.objects.insert(i, obj);
+			self.objects.insert(0, obj);
 			i+=1;
 		}
 	}
@@ -188,12 +188,14 @@ impl GameObject for Ball {
 
 
 			let objects=&mut scene.objects;
-			for i in 0..objects.len() {
+			let mut i=0;
+			while i<objects.len() {
 				match self.circle.collision(objects[i].to_rect()) {
 					circle::Collision::At(x, y) => {
 						if objects[i].is_block() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 							objects.remove(i);
+							i-=1;
 						}
 						if objects[i].is_palka() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
@@ -204,6 +206,7 @@ impl GameObject for Ball {
 					},
 					circle::Collision::None => ()
 				};
+				i+=1;
 			}
 		}
 	}
