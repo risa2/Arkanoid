@@ -62,8 +62,8 @@ struct App <'a> {
 }
 
 impl Block {
-	const WIDTH: i32 = 100;
-	const HEIGHT: i32 = 40;
+	const WIDTH: i32 = 50;
+	const HEIGHT: i32 = 20;
 }
 impl GameObject for Block {
 	fn to_rect(&self)->Rect {
@@ -147,10 +147,10 @@ impl GameObject for Palka {
 	fn update(&mut self, scene: &mut Scene) {
 		let kb=scene.evt.keyboard_state();
 		if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Left) {
-			self.pos.x=(self.pos.x-5).max(0)
+			self.pos.x=(self.pos.x-10).max(0)
 		}
 		if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Right) {
-            self.pos.x=(self.pos.x+5).min(scene.width-self.pos.w)
+            self.pos.x=(self.pos.x+10).min(scene.width-self.pos.w)
 		}
 	}
 }
@@ -196,8 +196,9 @@ impl GameObject for Ball {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 							objects.remove(i);
 							i-=1;
+							break;
 						}
-						if objects[i].is_palka() {
+						else if objects[i].is_palka() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 							let dx=self.circle.x-objects[i].to_rect().center().x as f32;
 							self.direction+=dx as f32/objects[i].to_rect().w as f32;
@@ -252,9 +253,9 @@ fn main() {
 	let window=video.window("Arkanoid", 1000, 600).build().unwrap();
 	let mut renderer=window.into_canvas().build().unwrap();
 
-	let mut tmp_vec=make_blocks(10, 10, 990, 590, 5, 6);
+	let mut tmp_vec=make_blocks(10, 10, 990, 390, 19, 11);
 	tmp_vec.push(Box::new(Palka::new(300, 580, 80, 10)) as Box<GameObject>);
-	tmp_vec.push(Box::new(Ball::new(350, 200, 10, 5)) as Box<GameObject>);
+	tmp_vec.push(Box::new(Ball::new(350, 500, 10, 7)) as Box<GameObject>);
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
 		scene: Scene{objects: tmp_vec,
