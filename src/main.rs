@@ -22,12 +22,24 @@ trait GameObject {
 	fn is_palka(&self)->bool {
 		false
 	}
+	fn is_bonus(&self)->Option<&Bonus>{
+		Option::None
+	}
+}
+
+type ObjectList=Vec<Box<GameObject>>;
+
+trait Bonus: GameObject {
+	fn activate(&self, scene: &mut ObjectList);
+	fn is_bonus(&self)->Option<&Bonus> where Self: std::marker::Sized {
+		Option::Some(self)
+	}
 }
 
 struct Scene {
 	width: i32,
 	height: i32,
-	objects: Vec<Box<GameObject>>,
+	objects: ObjectList,
 	evt: sdl2::EventPump
 }
 
@@ -78,7 +90,7 @@ impl GameObject for Block {
 	}
 }
 
-/*impl GameObject for NewBallBonus {
+impl GameObject for NewBallBonus {
 	fn to_rect(&self) -> Rect {
 		self.circle.to_rect()
 	}
@@ -87,14 +99,8 @@ impl GameObject for Block {
 	}
 	fn update(&mut self, scene: &mut Scene) {
 		self.circle.y-=1.0;
-		match self.circle.collision(scene.objects.iter().find(|&x|x.is_palka()).unwrap().to_rect()) {
-			circle::Collision::At(x, y) => {
-
-			},
-			circle::Collision::None => ()
-		}
 	}
-}*/
+}
 
 fn make_blocks(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_count: u32)->Vec<Box<GameObject>> {
 	let mut blocks: Vec<Box<GameObject>>=vec![];
@@ -195,7 +201,6 @@ impl GameObject for Ball {
 						if objects[i].is_block() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 							objects.remove(i);
-							i-=1;
 							break;
 						}
 						else if objects[i].is_palka() {
@@ -203,6 +208,12 @@ impl GameObject for Ball {
 							let dx=self.circle.x-objects[i].to_rect().center().x as f32;
 							self.direction+=dx as f32/objects[i].to_rect().w as f32;
 							self.direction=self.direction.max(geometry::PI/8.0*9.0).min(geometry::PI/8.0*15.0);
+						}
+						else if objects[i].is_bonus().is_some() {
+							let object=objects.remove(i);
+							let bonus=object.is_bonus().unwrap();
+							bonus.activate(objects);
+							i-=1;
 						}
 					},
 					circle::Collision::None => ()
@@ -253,7 +264,7 @@ fn main() {
 	let window=video.window("Arkanoid", 1000, 600).build().unwrap();
 	let mut renderer=window.into_canvas().build().unwrap();
 
-	let mut tmp_vec=make_blocks(10, 10, 990, 390, 19, 11);
+	let mut tmp_vec=make_blocks(10, 10, 990, 390, 15, 10);
 	tmp_vec.push(Box::new(Palka::new(300, 580, 80, 10)) as Box<GameObject>);
 	tmp_vec.push(Box::new(Ball::new(350, 500, 10, 7)) as Box<GameObject>);
 	let mut app=App {
