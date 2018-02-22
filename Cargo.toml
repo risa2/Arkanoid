@@ -7,3 +7,6 @@ authors = ["robotika"]
 version="0.31.0"
 default-features=false
 features=["ttf", "gfx"]
+
+[dependencies]
+rand="0.4"

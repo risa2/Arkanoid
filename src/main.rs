@@ -1,9 +1,11 @@
 extern crate sdl2;
+extern crate rand;
 
 mod geometry;
 mod circle;
 
 use std::f32;
+use rand::Rng;
 
 use sdl2::pixels::Color;
 use sdl2::rect::Rect;
@@ -31,16 +33,14 @@ type ObjectList=Vec<Box<GameObject>>;
 
 trait Bonus: GameObject {
 	fn activate(&self, scene: &mut Scene);
-	fn is_bonus(&self)->Option<&Bonus> where Self: std::marker::Sized {
-		Option::Some(self)
-	}
 }
 
 struct Scene {
 	width: i32,
 	height: i32,
 	objects: ObjectList,
-	evt: sdl2::EventPump
+	evt: sdl2::EventPump,
+	rand: rand::ThreadRng
 }
 
 #[derive(Copy, Clone)]
@@ -100,6 +100,9 @@ impl GameObject for NewBallBonus {
 	}
 	fn update(&mut self, scene: &mut Scene) {
 		self.pos.y+=1;
+	}
+	fn is_bonus(&self)->Option<&Bonus> {
+		Option::Some(self)
 	}
 }
 
@@ -226,7 +229,10 @@ impl GameObject for Ball {
 					circle::Collision::At(x, y) => {
 						if objects[i].is_block().is_some() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-							objects.remove(i);
+							let object=objects.remove(i);
+							if scene.rand.next_f32()<0.1 {
+								objects.push(Box::new(NewBallBonus{pos: object.to_rect()}));
+							}
 							break;
 						}
 						else if objects[i].is_palka().is_some() {
@@ -296,11 +302,10 @@ fn main() {
 
 	let mut tmp_vec=make_blocks(10, 10, 990, 390, 15, 10);
 	tmp_vec.push(Box::new(Palka::new(300, 580, 80, 10)) as Box<GameObject>);
-	tmp_vec.push(Box::new(Ball::new(350, 500, 10, 7)) as Box<GameObject>);
+	tmp_vec.push(Box::new(Ball::new(350, 500, 10, 6)) as Box<GameObject>);
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
-		scene: Scene{objects: tmp_vec,
-				width: 1000, height: 600, evt: sdl.event_pump().unwrap()},
+		scene: Scene{objects: tmp_vec, width: 1000, height: 600, evt: sdl.event_pump().unwrap(), rand: rand::thread_rng()},
 		score: 0
 	};
 
