@@ -29,6 +29,14 @@ impl Circle {
 	pub fn to_rect(&self)->sdl2::rect::Rect {
 		sdl2::rect::Rect::new(self.corner().0, self.corner().1, self.radius as u32*2, self.radius as u32*2)
 	}
+	pub fn circle_collision(&self, another: Circle)->Collision {
+		if geometry::distance(self.center(), another.center())<=self.radius+another.radius {
+			Collision::At((self.x+another.x) as i32/2, (self.y+another.y) as i32/2)
+		}
+		else {
+			Collision::None
+		}
+	}
 	pub fn collision(&self, rect: sdl2::rect::Rect)->Collision {
 		if self.to_rect().has_intersection(rect) {
 			let (left, up)=(rect.x, rect.y);

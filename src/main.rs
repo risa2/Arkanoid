@@ -13,14 +13,14 @@ trait GameObject {
 	fn update(&mut self, scene: &mut Scene) {}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas);
 	fn to_rect(&self)-> Rect;
-	fn is_block(&self)->bool {
-		false
+	fn is_block(&self)->Option<&Block> {
+		Option::None
 	}
-	fn is_ball(&self)->bool {
-		false
+	fn is_ball(&self)->Option<&Ball> {
+		Option::None
 	}
-	fn is_palka(&self)->bool {
-		false
+	fn is_palka(&self)->Option<&Palka> {
+		Option::None
 	}
 	fn is_bonus(&self)->Option<&Bonus>{
 		Option::None
@@ -30,7 +30,7 @@ trait GameObject {
 type ObjectList=Vec<Box<GameObject>>;
 
 trait Bonus: GameObject {
-	fn activate(&self, scene: &mut ObjectList);
+	fn activate(&self, scene: &mut Scene);
 	fn is_bonus(&self)->Option<&Bonus> where Self: std::marker::Sized {
 		Option::Some(self)
 	}
@@ -64,7 +64,7 @@ struct Palka {
 
 #[derive(Copy, Clone)]
 struct NewBallBonus {
-	circle: circle::Circle
+	pos: sdl2::rect::Rect
 }
 
 struct App <'a> {
@@ -85,20 +85,27 @@ impl GameObject for Block {
 		renderer.set_draw_color(self.color);
 		renderer.fill_rect(self.to_rect()).unwrap();
 	}
-	fn is_block(&self)->bool {
-		true
+	fn is_block(&self)->Option<&Block> {
+		Option::Some(self)
 	}
 }
 
 impl GameObject for NewBallBonus {
 	fn to_rect(&self) -> Rect {
-		self.circle.to_rect()
+		self.pos
 	}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
-		self.circle.render(renderer, Color::RGB(255, 128, 0));
+		renderer.set_draw_color(Color::RGB(200, 100, 0));
+		renderer.fill_rect(self.pos);
 	}
 	fn update(&mut self, scene: &mut Scene) {
-		self.circle.y-=1.0;
+		self.pos.y+=1;
+	}
+}
+
+impl Bonus for NewBallBonus {
+	fn activate(&self, scene: &mut Scene) {
+		scene.objects.push(Box::new(Ball::new(scene.width/2, scene.height/2, 10, 7)));
 	}
 }
 
@@ -143,20 +150,39 @@ impl GameObject for Palka {
 	fn to_rect(&self) -> Rect {
 		self.pos
 	}
-	fn is_palka(&self)->bool {
-		true
+	fn is_palka(&self)->Option<&Palka> {
+		Option::Some(self)
 	}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(Color::RGB(0,0,0));
 		renderer.fill_rect(self.to_rect()).unwrap();
 	}
 	fn update(&mut self, scene: &mut Scene) {
-		let kb=scene.evt.keyboard_state();
-		if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Left) {
-			self.pos.x=(self.pos.x-10).max(0)
+		{
+			let kb=scene.evt.keyboard_state();
+			if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Left) {
+				self.pos.x=(self.pos.x-10).max(0)
+			}
+			if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Right) {
+				self.pos.x=(self.pos.x+10).min(scene.width-self.pos.w)
+			}
 		}
-		if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Right) {
-            self.pos.x=(self.pos.x+10).min(scene.width-self.pos.w)
+
+		let mut bonuses: ObjectList=vec![];
+		{
+			let objects=&mut scene.objects;
+			let mut i=0;
+			while i<objects.len() {
+				if self.pos.has_intersection(objects[i].to_rect())&&objects[i].is_bonus().is_some() {
+					let object=objects.remove(i);
+					bonuses.push(object);
+					i-=1;
+				}
+				i+=1;
+			}
+		}
+		for bonus in bonuses {
+			bonus.is_bonus().unwrap().activate(scene);
 		}
 	}
 }
@@ -174,8 +200,8 @@ impl GameObject for Ball {
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		self.circle.render(renderer, Color::RGB(0, 0, 255));
 	}
-	fn is_ball(&self)->bool {
-		true
+	fn is_ball(&self)->Option<&Ball> {
+		Option::Some(self)
 	}
 
 	fn update(&mut self, scene: &mut Scene) {
@@ -198,26 +224,30 @@ impl GameObject for Ball {
 			while i<objects.len() {
 				match self.circle.collision(objects[i].to_rect()) {
 					circle::Collision::At(x, y) => {
-						if objects[i].is_block() {
+						if objects[i].is_block().is_some() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 							objects.remove(i);
 							break;
 						}
-						else if objects[i].is_palka() {
+						else if objects[i].is_palka().is_some() {
 							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 							let dx=self.circle.x-objects[i].to_rect().center().x as f32;
 							self.direction+=dx as f32/objects[i].to_rect().w as f32;
 							self.direction=self.direction.max(geometry::PI/8.0*9.0).min(geometry::PI/8.0*15.0);
 						}
-						else if objects[i].is_bonus().is_some() {
-							let object=objects.remove(i);
-							let bonus=object.is_bonus().unwrap();
-							bonus.activate(objects);
-							i-=1;
-						}
 					},
 					circle::Collision::None => ()
 				};
+				if objects[i].is_ball().is_some() {
+					let ball=*objects.remove(i).is_ball().unwrap();
+					match self.circle.circle_collision(ball.circle) {
+						circle::Collision::At(x, y) => {
+							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
+						},
+						circle::Collision::None => ()
+					}
+					objects.insert(i, Box::new(ball));
+				}
 				i+=1;
 			}
 		}
@@ -240,16 +270,16 @@ impl<'a> App<'a> {
 	}
 
 	fn update(&mut self) {
-		let blocks=self.scene.objects.iter().filter(|&x|x.is_block()).count() as i32;
+		let blocks=self.scene.objects.iter().filter(|&x|x.is_block().is_some()).count() as i32;
 		self.scene.update();
-		self.score+=blocks-self.scene.objects.iter().filter(|&x|x.is_block()).count() as i32;
+		self.score+=blocks-self.scene.objects.iter().filter(|&x|x.is_block().is_some()).count() as i32;
 	}
 
 	fn lose(&self)->bool {
-		self.scene.objects.iter().any(|ref x|x.is_ball()&&x.to_rect().bottom()>=self.scene.height-1)
+		self.scene.objects.iter().any(|ref x|x.is_ball().is_some()&&x.to_rect().bottom()>=self.scene.height-1)
 	}
 	fn win(&self)->bool {
-		!self.scene.objects.iter().any(|ref x|x.is_block())
+		!self.scene.objects.iter().any(|ref x|x.is_block().is_some())
 	}
     fn end(&self)->bool {
         self.lose()||self.win()
