@@ -217,7 +217,7 @@ impl GameObject for Ball {
 				self.direction=geometry::horizontal_bounce(self.direction);
 			}
 
-			if self.circle.y>scene.height as f32-self.circle.radius || self.circle.y<self.circle.radius {
+			if self.circle.y<self.circle.radius {
 				self.direction=geometry::vertical_bounce(self.direction);
 			}
 
@@ -301,7 +301,7 @@ fn main() {
 	let mut renderer=window.into_canvas().build().unwrap();
 
 	let mut tmp_vec=make_blocks(10, 10, 990, 390, 15, 10);
-	tmp_vec.push(Box::new(Palka::new(300, 580, 80, 10)) as Box<GameObject>);
+	tmp_vec.push(Box::new(Palka::new(300, 590, 80, 10)) as Box<GameObject>);
 	tmp_vec.push(Box::new(Ball::new(350, 500, 10, 6)) as Box<GameObject>);
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
