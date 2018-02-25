@@ -3,6 +3,7 @@ extern crate rand;
 
 mod geometry;
 mod circle;
+#[macro_use]
 mod objects;
 
 use objects::*;
@@ -56,13 +57,13 @@ fn main() {
 
 	let window=video.window("Arkanoid", 1000, 600).build().unwrap();
 	let mut renderer=window.into_canvas().build().unwrap();
-
-	let mut tmp_vec=make_blocks(sdl2::rect::Rect::new(10, 10, 990, 390), sdl2::rect::Point::new(15, 10), sdl2::rect::Point::new(50, 20));
-	tmp_vec.push(Box::new(Palka::new(300, 590, 80, 10)) as Box<GameObject>);
-	tmp_vec.push(Box::new(Ball::new(350, 500, 10, 6)) as Box<GameObject>);
+	
 	let mut app=App {
 		font: ttf.load_font("font.ttf", 17).unwrap(),
-		scene: Scene{objects: tmp_vec, width: 1000, height: 600, evt: sdl.event_pump().unwrap(), rand: rand::thread_rng()},
+		scene: Scene{width: 1000, height: 600, evt: sdl.event_pump().unwrap(), rand: rand::thread_rng(),
+			objects: append!(make_blocks(Rect::new(10, 10, 990, 390), sdl2::rect::Point::new(15, 10), sdl2::rect::Point::new(50, 20));
+				new!(Palka; 350, 590, 80, 10) as Box<GameObject>, new!(Ball; 300, 500, 10, 6) as Box<GameObject>),
+		},
 		score: 0
 	};
 

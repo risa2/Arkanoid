@@ -8,6 +8,72 @@ use rand::Rng;
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 
+#[macro_export]
+macro_rules! append {
+	($list:expr; $( $x:expr ),* ) => {
+		{
+			let mut tmp=$list;
+			$(
+				tmp.push($x);
+			)*
+			tmp
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! new {
+	($type:ident; $( $x:expr ),* ) => (
+		Box::new( $type::new( $($x, )* ) )
+	)
+}
+
+#[macro_export]
+macro_rules! with {
+	($value:expr => $name:ident; $code:block) => {
+		{
+			let $name=$value;
+			$code
+		}
+	};
+	($value:expr => mut $name:ident; $code:block) => {
+		{
+			let mut $name=$value;
+			$code
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! iterate {
+	($list:expr => $i:ident; $code:block) => {
+		{
+			let mut index=0;
+			while index<$list.len() {
+				let $i=index;
+				if $code {
+					index+=1;
+				}
+			}
+		}
+	};
+}
+
+#[macro_export]
+macro_rules! if_true {
+	($cond:expr; $code:block) => {
+		{
+			if $cond {
+				$code;
+				true
+			}
+			else {
+				false
+			}
+		}
+	};
+}
+
 pub trait GameObject {
 	fn update(&mut self, scene: &mut Scene) {}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas);
@@ -82,6 +148,12 @@ impl GameObject for Block {
 	}
 }
 
+impl NewBallBonus {
+	fn new(pos: sdl2::rect::Rect)->NewBallBonus {
+		NewBallBonus{pos: pos}
+	}
+}
+
 impl GameObject for NewBallBonus {
 	fn to_rect(&self) -> Rect {
 		self.pos
@@ -100,7 +172,7 @@ impl GameObject for NewBallBonus {
 
 impl Bonus for NewBallBonus {
 	fn activate(&self, scene: &mut Scene) {
-		scene.objects.push(Box::new(Ball::new(scene.width/2, scene.height/2, 10, 7)));
+		scene.objects.push(new!(Ball; scene.width/2, scene.height/2, 10, 7));
 	}
 }
 
@@ -109,7 +181,7 @@ pub fn make_blocks(pos: sdl2::rect::Rect, count: sdl2::rect::Point, size: sdl2::
 	for y in 0..count.y {
 		for x in 0..count.x {
 			let dst=pos.top_left()+sdl2::rect::Point::new(geometry::split(pos.w, count.x, x), geometry::split(pos.h, count.y, y));
-			blocks.push(Box::new(Block::new(Color::RGB((x%2*255) as u8, (y%2*255) as u8, 0), dst, size)));
+			blocks.push(new!(Block; Color::RGB((x%2*255) as u8, (y%2*255) as u8, 0), dst, size));
 		}
 	}
 	blocks
@@ -125,15 +197,13 @@ impl Scene {
 		}
 	}
 	pub fn update(&mut self) {
-		let mut i=0;
-		while i<self.objects.len() {
+		iterate!(self.objects=>i; {
 			let mut obj=self.objects.remove(i);
 			obj.update(self);
-			if obj.is_ball().is_none()||obj.to_rect().bottom()<=self.height-1 {
+			if_true!(obj.is_ball().is_none()||obj.to_rect().bottom()<=self.height-1; {
 				self.objects.insert(0, obj);
-				i+=1;
-			}
-		}
+			})
+		});
 	}
 }
 
@@ -155,30 +225,25 @@ impl GameObject for Palka {
 		renderer.fill_rect(self.to_rect()).unwrap();
 	}
 	fn update(&mut self, scene: &mut Scene) {
-		{
-			let kb=scene.evt.keyboard_state();
+		with!(scene.evt.keyboard_state()=>kb; {
 			if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Left) {
 				self.pos.x=(self.pos.x-8).max(0)
 			}
 			if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Right) {
 				self.pos.x=(self.pos.x+8).min(scene.width-self.pos.w)
 			}
-		}
+		});
 
-		let mut bonuses: ObjectList=vec![];
-		{
+		let bonuses=with!(ObjectList::new()=>mut tmp; {
 			let objects=&mut scene.objects;
-			let mut i=0;
-			while i<objects.len() {
-				if self.pos.has_intersection(objects[i].to_rect())&&objects[i].is_bonus().is_some() {
+			iterate!(objects=>i; {
+				!if_true!(self.pos.has_intersection(objects[i].to_rect())&&objects[i].is_bonus().is_some(); {
 					let object=objects.remove(i);
-					bonuses.push(object);
-				}
-				else {
-					i+=1;
-				}
-			}
-		}
+					tmp.push(object);
+				})
+			});
+			tmp
+		});
 		for bonus in bonuses {
 			bonus.is_bonus().unwrap().activate(scene);
 		}
@@ -217,39 +282,36 @@ impl GameObject for Ball {
 			}
 
 			let objects=&mut scene.objects;
-			let mut i=0;
-			while i<objects.len() {
-				match self.circle.collision(objects[i].to_rect()) {
-					circle::Collision::At(x, y) => {
-						if objects[i].is_block().is_some() {
-							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-							let object=objects.remove(i);
-							if scene.rand.next_f32()<0.1 {
-								objects.push(Box::new(NewBallBonus{pos: object.to_rect()}));
-							}
-							break;
+			iterate!(objects=>i; {
+				if let circle::Collision::At(x, y)=self.circle.collision(objects[i].to_rect()) {
+					if objects[i].is_block().is_some() {
+						self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
+						let object=objects.remove(i);
+						if scene.rand.next_f32()<0.1 {
+							objects.push(new!(NewBallBonus; object.to_rect()));
 						}
-							else if objects[i].is_palka().is_some() {
-								self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-								let dx = self.circle.x - objects[i].to_rect().center().x as f32;
-								self.direction += dx as f32/objects[i].to_rect().w as f32;
-								self.direction=self.direction.max(geometry::PI/8.0*9.0).min(geometry::PI/8.0*15.0);
-							}
-					},
-					circle::Collision::None => ()
-				};
-				if objects[i].is_ball().is_some() {
-					let ball=*objects.remove(i).is_ball().unwrap();
-					match self.circle.circle_collision(ball.circle) {
-						circle::Collision::At(x, y) => {
-							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
-						},
-						circle::Collision::None => ()
+						break;
 					}
-					objects.insert(i, Box::new(ball));
+					else if objects[i].is_palka().is_some() {
+						self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
+						let dx=self.circle.x-objects[i].to_rect().center().x as f32;
+						print!("{} ", self.direction);
+						self.direction+=dx as f32/objects[i].to_rect().w as f32;
+						print!("{} ", self.direction);
+						self.direction=self.direction.max(geometry::PI/10.0*11.0).min(geometry::PI/10.0*19.0);
+						print!("{}\n", self.direction);
+						//Problem: printed 0.314159 0.642804 3.455752
+					}
+					else if objects[i].is_ball().is_some() {
+						let ball=*objects.remove(i).is_ball().unwrap();
+						if let circle::Collision::At(x, y)=self.circle.circle_collision(ball.circle) {
+							self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
+						}
+						objects.insert(i, Box::new(ball));
+					}
 				}
-				i+=1;
-			}
+				true
+			});
 		}
 	}
 }

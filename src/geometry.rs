@@ -38,43 +38,43 @@ pub fn line_angle(begin: (i32, i32), end: (i32, i32))->f32 {
 	shift_angle((end.0-begin.0, end.1-begin.1))
 }
 
-
-fn eq_float(a: f32, b: f32)->bool {
-	(a-b).abs()<0.0001
+#[macro_export]
+macro_rules! assert_eq_float {
+	($a:expr, $b:expr) => (assert!((a-b).abs()<0.0001))
 }
 
 #[test]
 fn test_horizontal_bounce() {
-	assert!(eq_float(horizontal_bounce(PI/4.0), PI*3.0/4.0));
-	assert!(eq_float(horizontal_bounce(PI*7.0/4.0), PI*5.0/4.0));
+	assert_eq_float!(horizontal_bounce(PI/4.0), PI*3.0/4.0);
+	assert_eq_float!(horizontal_bounce(PI*7.0/4.0), PI*5.0/4.0);
 	
-	assert!(eq_float(horizontal_bounce(PI*3.0/4.0), PI/4.0));
-	assert!(eq_float(horizontal_bounce(PI*5.0/4.0), PI*7.0/4.0));
+	assert_eq_float!(horizontal_bounce(PI*3.0/4.0), PI/4.0);
+	assert_eq_float!(horizontal_bounce(PI*5.0/4.0), PI*7.0/4.0);
 }
 
 #[test]
 fn test_vertical_bounce() {
-	assert!(eq_float(vertical_bounce(PI/4.0), PI*7.0/4.0));
-	assert!(eq_float(vertical_bounce(PI*7.0/4.0), PI/4.0));
+	assert_eq_float!(vertical_bounce(PI/4.0), PI*7.0/4.0);
+	assert_eq_float!(vertical_bounce(PI*7.0/4.0), PI/4.0);
 	
-	assert!(eq_float(vertical_bounce(PI*3.0/4.0), PI*5.0/4.0));
-	assert!(eq_float(vertical_bounce(PI*5.0/4.0), PI*3.0/4.0));
+	assert_eq_float!(vertical_bounce(PI*3.0/4.0), PI*5.0/4.0);
+	assert_eq_float!(vertical_bounce(PI*5.0/4.0), PI*3.0/4.0);
 }
 
 #[test]
 fn test_line_angle() {
-	assert!(eq_float(line_angle((1, 1), (0, 0)), PI*5.0/4.0));
-	assert!(eq_float(line_angle((0, 0), (1, 1)), PI/4.0));
-	assert!(eq_float(line_angle((0, 0), (0, 1)), PI/2.0));
-	assert!(eq_float(line_angle((0, 0), (1, 0)), 0.0));
+	assert_eq_float!(line_angle((1, 1), (0, 0)), PI*5.0/4.0);
+	assert_eq_float!(line_angle((0, 0), (1, 1)), PI/4.0);
+	assert_eq_float!(line_angle((0, 0), (0, 1)), PI/2.0);
+	assert_eq_float!(line_angle((0, 0), (1, 0)), 0.0);
 }
 
 #[test]
 fn test_bounce() {
-	assert!(eq_float(bounce(PI, 0.0), 0.0));
-	assert!(eq_float(bounce(PI/4.0, PI), PI*3.0/4.0));
-	assert!(eq_float(bounce(0.0, PI*3.0/4.0), PI/2.0));
-	assert!(eq_float(bounce(PI*3.0/2.0, PI/4.0), 0.0));
-	assert!(eq_float(bounce(PI*3.0/4.0, 0.0), PI/4.0));
-	assert!(eq_float(bounce(PI*5.0/4.0, PI/2.0), PI*3.0/4.0));
+	assert_eq_float!(bounce(PI, 0.0), 0.0);
+	assert_eq_float!(bounce(PI/4.0, PI), PI*3.0/4.0);
+	assert_eq_float!(bounce(0.0, PI*3.0/4.0), PI/2.0);
+	assert_eq_float!(bounce(PI*3.0/2.0, PI/4.0), 0.0);
+	assert_eq_float!(bounce(PI*3.0/4.0, 0.0), PI/4.0);
+	assert_eq_float!(bounce(PI*5.0/4.0, PI/2.0), PI*3.0/4.0);
 }
