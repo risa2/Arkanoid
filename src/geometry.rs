@@ -1,7 +1,7 @@
 use std::f32;
 
 pub const PI:f32=3.14159265358;
-pub fn split(lenght: u32, width: u32, index: u32)->u32 {
+pub fn split(lenght: i32, width: i32, index: i32)->i32 {
     index*lenght/width
 }
 pub fn to_cartesian(lenght: f32, angle: f32)->(f32, f32) {

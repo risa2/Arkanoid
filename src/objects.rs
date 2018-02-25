@@ -43,8 +43,7 @@ pub struct Scene {
 #[derive(Copy, Clone)]
 pub struct Block {
 	color: Color,
-	x: i32,
-	y: i32
+	pos: sdl2::rect::Rect
 }
 
 #[derive(Copy, Clone)]
@@ -65,12 +64,14 @@ pub struct NewBallBonus {
 }
 
 impl Block {
-	const WIDTH: i32 = 50;
-	const HEIGHT: i32 = 20;
+	fn new(col: Color, pos: sdl2::rect::Point, size: sdl2::rect::Point)->Block {
+		Block{color: col, pos: sdl2::rect::Rect::new(pos.x, pos.y, size.x as u32, size.y as u32)}
+	}
 }
+
 impl GameObject for Block {
 	fn to_rect(&self)->Rect {
-		Rect::new(self.x, self.y, Block::WIDTH as u32, Block::HEIGHT as u32)
+		self.pos
 	}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(self.color);
@@ -87,7 +88,7 @@ impl GameObject for NewBallBonus {
 	}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
 		renderer.set_draw_color(Color::RGB(200, 100, 0));
-		renderer.fill_rect(self.pos);
+		renderer.fill_rect(self.pos).unwrap();
 	}
 	fn update(&mut self, scene: &mut Scene) {
 		self.pos.y+=1;
@@ -103,12 +104,12 @@ impl Bonus for NewBallBonus {
 	}
 }
 
-pub fn make_blocks(left: u32, top: u32, width: u32, height: u32, x_count: u32, y_count: u32)->Vec<Box<GameObject>> {
+pub fn make_blocks(pos: sdl2::rect::Rect, count: sdl2::rect::Point, size: sdl2::rect::Point)->Vec<Box<GameObject>> {
 	let mut blocks: Vec<Box<GameObject>>=vec![];
-	for y in 0..y_count {
-		for x in 0..x_count {
-			let (dst_x, dst_y)=(left+geometry::split(width, x_count, x), top+geometry::split(height, y_count, y));
-			blocks.push(Box::new(Block{color: Color::RGB((x%2*255) as u8, ((x+1)%2*255) as u8, 0), x: dst_x as i32, y: dst_y as i32}));
+	for y in 0..count.y {
+		for x in 0..count.x {
+			let dst=pos.top_left()+sdl2::rect::Point::new(geometry::split(pos.w, count.x, x), geometry::split(pos.h, count.y, y));
+			blocks.push(Box::new(Block::new(Color::RGB((x%2*255) as u8, (y%2*255) as u8, 0), dst, size)));
 		}
 	}
 	blocks
@@ -157,10 +158,10 @@ impl GameObject for Palka {
 		{
 			let kb=scene.evt.keyboard_state();
 			if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Left) {
-				self.pos.x=(self.pos.x-10).max(0)
+				self.pos.x=(self.pos.x-8).max(0)
 			}
 			if kb.is_scancode_pressed(sdl2::keyboard::Scancode::Right) {
-				self.pos.x=(self.pos.x+10).min(scene.width-self.pos.w)
+				self.pos.x=(self.pos.x+8).min(scene.width-self.pos.w)
 			}
 		}
 
@@ -173,9 +174,9 @@ impl GameObject for Palka {
 					let object=objects.remove(i);
 					bonuses.push(object);
 				}
-					else {
-						i+=1;
-					}
+				else {
+					i+=1;
+				}
 			}
 		}
 		for bonus in bonuses {

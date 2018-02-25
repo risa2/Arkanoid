@@ -57,7 +57,7 @@ fn main() {
 	let window=video.window("Arkanoid", 1000, 600).build().unwrap();
 	let mut renderer=window.into_canvas().build().unwrap();
 
-	let mut tmp_vec=make_blocks(10, 10, 990, 390, 15, 10);
+	let mut tmp_vec=make_blocks(sdl2::rect::Rect::new(10, 10, 990, 390), sdl2::rect::Point::new(15, 10), sdl2::rect::Point::new(50, 20));
 	tmp_vec.push(Box::new(Palka::new(300, 590, 80, 10)) as Box<GameObject>);
 	tmp_vec.push(Box::new(Ball::new(350, 500, 10, 6)) as Box<GameObject>);
 	let mut app=App {
