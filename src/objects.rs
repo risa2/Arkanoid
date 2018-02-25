@@ -48,7 +48,7 @@ macro_rules! with {
 macro_rules! iterate {
 	($list:expr => $i:ident; $code:block) => {
 		{
-			let mut index=0;
+			let mut index: usize=0;
 			while index<$list.len() {
 				let $i=index;
 				if $code {
@@ -295,12 +295,11 @@ impl GameObject for Ball {
 					else if objects[i].is_palka().is_some() {
 						self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 						let dx=self.circle.x-objects[i].to_rect().center().x as f32;
-						print!("{} ", self.direction);
 						self.direction+=dx as f32/objects[i].to_rect().w as f32;
-						print!("{} ", self.direction);
+						if self.direction<geometry::PI/2.0 {
+							self.direction=geometry::PI/19.0*11.0;
+						}
 						self.direction=self.direction.max(geometry::PI/10.0*11.0).min(geometry::PI/10.0*19.0);
-						print!("{}\n", self.direction);
-						//Problem: printed 0.314159 0.642804 3.455752
 					}
 					else if objects[i].is_ball().is_some() {
 						let ball=*objects.remove(i).is_ball().unwrap();
