@@ -8,72 +8,6 @@ use rand::Rng;
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 
-#[macro_export]
-macro_rules! append {
-	($list:expr; $( $x:expr ),* ) => {
-		{
-			let mut tmp=$list;
-			$(
-				tmp.push($x);
-			)*
-			tmp
-		}
-	};
-}
-
-#[macro_export]
-macro_rules! new {
-	($type:ident; $( $x:expr ),* ) => (
-		Box::new( $type::new( $($x, )* ) )
-	)
-}
-
-#[macro_export]
-macro_rules! with {
-	($value:expr => $name:ident; $code:block) => {
-		{
-			let $name=$value;
-			$code
-		}
-	};
-	($value:expr => mut $name:ident; $code:block) => {
-		{
-			let mut $name=$value;
-			$code
-		}
-	};
-}
-
-#[macro_export]
-macro_rules! iterate {
-	($list:expr => $i:ident; $code:block) => {
-		{
-			let mut index: usize=0;
-			while index<$list.len() {
-				let $i=index;
-				if $code {
-					index+=1;
-				}
-			}
-		}
-	};
-}
-
-#[macro_export]
-macro_rules! if_true {
-	($cond:expr; $code:block) => {
-		{
-			if $cond {
-				$code;
-				true
-			}
-			else {
-				false
-			}
-		}
-	};
-}
-
 pub trait GameObject {
 	fn update(&mut self, scene: &mut Scene) {}
 	fn render(&self, renderer: &mut sdl2::render::WindowCanvas);
@@ -197,13 +131,15 @@ impl Scene {
 		}
 	}
 	pub fn update(&mut self) {
-		iterate!(self.objects=>i; {
+		let mut i=0;
+		while i<self.objects.len() {
 			let mut obj=self.objects.remove(i);
 			obj.update(self);
-			if_true!(obj.is_ball().is_none()||obj.to_rect().bottom()<=self.height-1; {
+			if obj.is_ball().is_none()||obj.to_rect().bottom()<=self.height-1 {
 				self.objects.insert(0, obj);
-			})
-		});
+				i+=1;
+			}
+		}
 	}
 }
 
@@ -236,12 +172,16 @@ impl GameObject for Palka {
 
 		let bonuses=with!(ObjectList::new()=>mut tmp; {
 			let objects=&mut scene.objects;
-			iterate!(objects=>i; {
-				!if_true!(self.pos.has_intersection(objects[i].to_rect())&&objects[i].is_bonus().is_some(); {
+			let mut i=0;
+			while i<objects.len() {
+				if self.pos.has_intersection(objects[i].to_rect())&&objects[i].is_bonus().is_some() {
 					let object=objects.remove(i);
 					tmp.push(object);
-				})
-			});
+				}
+				else {
+					i+=1;
+				}
+			}
 			tmp
 		});
 		for bonus in bonuses {
@@ -282,7 +222,8 @@ impl GameObject for Ball {
 			}
 
 			let objects=&mut scene.objects;
-			iterate!(objects=>i; {
+			let mut i=0;
+			while i<objects.len() {
 				if let circle::Collision::At(x, y)=self.circle.collision(objects[i].to_rect()) {
 					if objects[i].is_block().is_some() {
 						self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
@@ -309,8 +250,8 @@ impl GameObject for Ball {
 						objects.insert(i, Box::new(ball));
 					}
 				}
-				true
-			});
+				i+=1
+			}
 		}
 	}
 }

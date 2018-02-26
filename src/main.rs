@@ -1,9 +1,10 @@
 extern crate sdl2;
 extern crate rand;
 
+#[macro_use]
+mod macros;
 mod geometry;
 mod circle;
-#[macro_use]
 mod objects;
 
 use objects::*;
