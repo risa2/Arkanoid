@@ -21,7 +21,7 @@ struct App <'a> {
 
 impl<'a> App<'a> {
 	fn render_text(&self, renderer: &mut sdl2::render::WindowCanvas, text: String) {
-		let img=self.font.render(&text).blended(Color::RGB(0, 0, 0)).unwrap();
+		let img=self.font.render(&text).blended(Color::RGB(0, 255, 255)).unwrap();
 		let creator=renderer.texture_creator();
 		let texture=creator.create_texture_from_surface(img).unwrap();
 		let t_info=texture.query();

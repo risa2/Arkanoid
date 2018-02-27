@@ -1,6 +1,11 @@
 use std::f32;
 
 pub const PI:f32=3.14159265358;
+
+pub fn to_rad(deg: f32)->f32 {
+	deg/180.0*PI
+}
+
 pub fn split(lenght: i32, width: i32, index: i32)->i32 {
     index*lenght/width
 }

@@ -237,10 +237,10 @@ impl GameObject for Ball {
 						self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 						let dx=self.circle.x-objects[i].to_rect().center().x as f32;
 						self.direction+=dx as f32/objects[i].to_rect().w as f32;
-						if self.direction<geometry::PI/2.0 {
-							self.direction=geometry::PI/19.0*11.0;
+						if self.direction<geometry::to_rad(90.0) {
+							self.direction=geometry::to_rad(190.0);
 						}
-						self.direction=self.direction.max(geometry::PI/10.0*11.0).min(geometry::PI/10.0*19.0);
+						self.direction=self.direction.max(geometry::to_rad(190.0)).min(geometry::to_rad(350.0));
 					}
 					else if objects[i].is_ball().is_some() {
 						let ball=*objects.remove(i).is_ball().unwrap();
@@ -250,7 +250,7 @@ impl GameObject for Ball {
 						objects.insert(i, Box::new(ball));
 					}
 				}
-				i+=1
+				i+=1;
 			}
 		}
 	}
