@@ -5,13 +5,19 @@ use geometry;
 use circle;
 
 use rand::Rng;
+use std::time;
 use sdl2::rect::Rect;
 use sdl2::pixels::Color;
 
 pub trait GameObject {
 	fn update(&mut self, scene: &mut Scene) {}
-	fn render(&self, renderer: &mut sdl2::render::WindowCanvas);
-	fn to_rect(&self)-> Rect;
+	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {}
+	fn to_rect(&self)-> Rect {
+		Rect::new(0,0,0,0)
+	}
+	fn exists(&self, scene: &Scene)->bool {
+		true
+	}
 	fn is_block(&self)->Option<&Block> {
 		Option::None
 	}
@@ -59,13 +65,52 @@ pub struct Palka {
 }
 
 #[derive(Copy, Clone)]
+pub struct Watcher {
+	start: time::SystemTime,
+	destroy: bool
+}
+
+#[derive(Copy, Clone)]
 pub struct NewBallBonus {
+	pos: sdl2::rect::Rect
+}
+
+#[derive(Copy, Clone)]
+pub struct GrowBonus {
 	pos: sdl2::rect::Rect
 }
 
 impl Block {
 	fn new(col: Color, pos: sdl2::rect::Point, size: sdl2::rect::Point)->Block {
 		Block{color: col, pos: sdl2::rect::Rect::new(pos.x, pos.y, size.x as u32, size.y as u32)}
+	}
+}
+
+impl Watcher {
+	fn new()->Watcher {
+		Watcher{start: time::SystemTime::now(), destroy: false}
+	}
+}
+
+
+impl GameObject for Watcher {
+	fn update(&mut self, scene: &mut Scene) {
+		if time::SystemTime::now().duration_since(self.start).unwrap()>time::Duration::from_millis(10000) {
+			let mut i=0;
+			while i<scene.objects.len() {
+				if scene.objects[i].is_palka().is_some() {
+					let mut palka=*scene.objects.remove(i).is_palka().unwrap();
+					palka.pos.w-=43;
+					scene.objects.insert(i, Box::new(palka));
+					self.destroy=true;
+					break;
+				}
+				i+=1;
+			}
+		}
+	}
+	fn exists(&self, scene: &Scene)->bool {
+		!self.destroy
 	}
 }
 
@@ -110,6 +155,44 @@ impl Bonus for NewBallBonus {
 	}
 }
 
+impl GrowBonus {
+	fn new(pos: sdl2::rect::Rect)->GrowBonus {
+		GrowBonus{pos: pos}
+	}
+}
+
+impl GameObject for GrowBonus {
+	fn to_rect(&self) -> Rect {
+		self.pos
+	}
+	fn render(&self, renderer: &mut sdl2::render::WindowCanvas) {
+		renderer.set_draw_color(Color::RGB(200, 0, 100));
+		renderer.fill_rect(self.pos).unwrap();
+	}
+	fn update(&mut self, scene: &mut Scene) {
+		self.pos.y+=1;
+	}
+	fn is_bonus(&self)->Option<&Bonus> {
+		Option::Some(self)
+	}
+}
+
+impl Bonus for GrowBonus {
+	fn activate(&self, scene: &mut Scene) {
+		let mut i=0;
+		while i<scene.objects.len() {
+			if scene.objects[i].is_palka().is_some() {
+				let mut palka=*scene.objects.remove(i).is_palka().unwrap();
+				palka.pos.w+=40;
+				scene.objects.insert(i, Box::new(palka));
+				scene.objects.push(new!(Watcher;));
+				break;
+			}
+			i+=1;
+		}
+	}
+}
+
 pub fn make_blocks(pos: sdl2::rect::Rect, count: sdl2::rect::Point, size: sdl2::rect::Point)->Vec<Box<GameObject>> {
 	let mut blocks: Vec<Box<GameObject>>=vec![];
 	for y in 0..count.y {
@@ -135,7 +218,7 @@ impl Scene {
 		while i<self.objects.len() {
 			let mut obj=self.objects.remove(i);
 			obj.update(self);
-			if obj.is_ball().is_none()||obj.to_rect().bottom()<=self.height-1 {
+			if obj.exists(self) {
 				self.objects.insert(0, obj);
 				i+=1;
 			}
@@ -184,15 +267,18 @@ impl GameObject for Palka {
 			}
 			tmp
 		});
+		scene.objects.push(Box::new(*self));
 		for bonus in bonuses {
 			bonus.is_bonus().unwrap().activate(scene);
 		}
+		let i=scene.objects.iter().position(|ref x|x.is_palka().is_some()).unwrap();
+		*self=*scene.objects.remove(i).is_palka().unwrap();
 	}
 }
 
 impl Ball {
 	pub fn new(x: i32, y: i32, radius: i32, speed: i32)->Ball {
-		Ball{circle: circle::Circle{x: x as f32, y: y as f32, radius: radius as f32}, direction: geometry::PI/2.0, speed: speed}
+		Ball{circle: circle::Circle{x: x as f32, y: y as f32, radius: radius as f32}, direction: geometry::to_rad(90.0), speed: speed}
 	}
 }
 
@@ -207,18 +293,24 @@ impl GameObject for Ball {
 		Option::Some(self)
 	}
 
+	fn exists(&self, scene: &Scene)->bool {
+		self.to_rect().bottom()<=scene.height-1
+	}
 	fn update(&mut self, scene: &mut Scene) {
 		for _ in 0..self.speed {
 			let (dx, dy)=geometry::to_cartesian(1.0, self.direction);
 			self.circle.x+=dx;
 			self.circle.y+=dy;
 
-			if self.circle.x>scene.width as f32-self.circle.radius || self.circle.x<self.circle.radius {
-				self.direction=geometry::horizontal_bounce(self.direction);
+			if self.circle.x>scene.width as f32-self.circle.radius && (self.direction<geometry::to_rad(90.0)||self.direction>geometry::to_rad(270.0)) {
+				self.direction=geometry::bounce(self.direction, geometry::to_rad(180.0));
+			}
+			if self.circle.x<self.circle.radius && self.direction>geometry::to_rad(90.0)&&self.direction<geometry::to_rad(270.0) {
+				self.direction=geometry::bounce(self.direction, geometry::to_rad(0.0));
 			}
 
-			if self.circle.y<self.circle.radius {
-				self.direction=geometry::vertical_bounce(self.direction);
+			if self.circle.y<self.circle.radius && self.direction>geometry::to_rad(180.0)&&self.direction<geometry::to_rad(360.0) {
+				self.direction=geometry::bounce(self.direction, geometry::to_rad(90.0));
 			}
 
 			let objects=&mut scene.objects;
@@ -228,8 +320,13 @@ impl GameObject for Ball {
 					if objects[i].is_block().is_some() {
 						self.direction=geometry::bounce(self.direction, geometry::line_angle((x, y), self.circle.center()));
 						let object=objects.remove(i);
-						if scene.rand.next_f32()<0.1 {
-							objects.push(new!(NewBallBonus; object.to_rect()));
+						if scene.rand.next_f32()<0.2 {
+							if scene.rand.next_f32()<0.5 {
+								objects.push(new!(NewBallBonus; object.to_rect()));
+							}
+							else {
+								objects.push(new!(GrowBonus; object.to_rect()));
+							}
 						}
 						break;
 					}

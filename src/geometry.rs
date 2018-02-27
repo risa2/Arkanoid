@@ -21,14 +21,12 @@ pub fn distance(a: (i32, i32), b:(i32, i32))->f32 {
 	relative_distance((a.0-b.0, a.1-b.1))
 }
 
-pub fn horizontal_bounce(angle: f32)->f32 {
-    if angle<=PI {PI-angle} else {PI-angle+2.0*PI}
+fn check(angle: f32)->f32 {
+	if angle>PI*2.0 {angle-2.0*PI} else {angle}
 }
-pub fn vertical_bounce(angle: f32)->f32 {
-    2.0*PI-angle
-}
+
 pub fn bounce(move_angle: f32, kolmice: f32)->f32 {
-    if kolmice-(move_angle-kolmice)<=PI {kolmice-(move_angle-kolmice)+PI} else {kolmice-(move_angle-kolmice)-PI}
+    check(kolmice-(move_angle-kolmice)+PI)
 }
 
 fn shift_angle_float(shift: (f32, f32))->f32 {
